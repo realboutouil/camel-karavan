@@ -17,16 +17,30 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Docker Compose configuration representing a complete docker-compose.yml file")
 public class DockerCompose {
-    private String version;
-    private Map<String, DockerComposeService> services;
-    private Map<String, DockerComposeNetwork> networks;
 
-    public DockerCompose() {
-    }
+    @Schema(description = "Docker Compose file format version", example = "3.8")
+    private String version;
+
+    @Schema(description = "Map of service definitions keyed by service name")
+    private Map<String, DockerComposeService> services;
+
+    @Schema(description = "Map of network definitions keyed by network name")
+    private Map<String, DockerComposeNetwork> networks;
 
     public DockerCompose(Map<String, DockerComposeService> services) {
         this.services = services;
@@ -36,29 +50,5 @@ public class DockerCompose {
         Map<String, DockerComposeService> map = new HashMap<>();
         map.put(service.getContainer_name(), service);
         return new DockerCompose(map);
-    }
-
-    public Map<String, DockerComposeService> getServices() {
-        return services;
-    }
-
-    public void setServices(Map<String, DockerComposeService> services) {
-        this.services = services;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public Map<String, DockerComposeNetwork> getNetworks() {
-        return networks;
-    }
-
-    public void setNetworks(Map<String, DockerComposeNetwork> networks) {
-        this.networks = networks;
     }
 }

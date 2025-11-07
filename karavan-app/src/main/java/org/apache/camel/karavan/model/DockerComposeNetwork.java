@@ -17,28 +17,22 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Docker Compose network configuration")
 public class DockerComposeNetwork {
 
+    @Schema(description = "Network name", example = "my-network")
     private String name;
+
+    @Schema(description = "Whether the network is externally managed (created outside of this compose file)", example = "false")
     private Boolean external;
-
-    public DockerComposeNetwork() {
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Boolean getExternal() {
-        return external;
-    }
-
-    public void setExternal(Boolean external) {
-        this.external = external;
-    }
 }

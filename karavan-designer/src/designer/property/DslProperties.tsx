@@ -19,16 +19,15 @@ import {
     Button,
     ExpandableSection,
     Form,
-    Text,
     TextInputGroup,
     TextInputGroupMain,
     TextInputGroupUtilities,
-    TextVariants,
     Title,
     ToggleGroup,
     ToggleGroupItem,
     Tooltip,
 } from '@patternfly/react-core';
+import {Text, TextVariants} from '../utils/PatternFlyCompat';
 import '../karavan.css';
 import './DslProperties.css';
 import "@patternfly/patternfly/patternfly.css";

@@ -16,7 +16,7 @@
  */
 import React, {useEffect, useState} from 'react';
 import {
-    Button, Modal, Title, TitleSizes
+    ActionGroup, Button, Modal, Title, TitleSizes
 } from '@patternfly/react-core';
 import Editor from "@monaco-editor/react";
 import {ExpressionBottomPanel} from "./ExpressionBottomPanel";
@@ -65,21 +65,24 @@ export function ExpressionModalEditor(props: Props) {
             aria-label="Expression"
             className='expression-modal'
             width={"80%"}
-            header={<React.Fragment>
-                <Title id="modal-custom-header-label" headingLevel="h1" size={TitleSizes['2xl']}>
-                    {title}
-                </Title>
-                <p className="pf-v5-u-pt-sm">{dslLanguage?.[2]}</p>
-            </React.Fragment>}
             isOpen={showEditor}
             onClose={() => close()}
-            actions={[
-                <Button key="save" variant="primary" size="sm"
-                        onClick={e => closeAndSave()}>Save</Button>,
-                <Button key="cancel" variant="secondary" size="sm"
-                        onClick={e => close()}>Close</Button>
-            ]}
-            onEscapePress={e => close()}>
+            onEscapePress={e => close()}
+            action={
+                <div className="modal-footer">
+                    <ActionGroup className="deploy-buttons">
+                        <Button key="save" variant="primary" size="sm"
+                                onClick={e => closeAndSave()}>Save</Button>
+                        <Button key="cancel" variant="secondary" size="sm"
+                                onClick={e => close()}>Close</Button>
+                    </ActionGroup>
+                </div>
+            }
+        >
+            <Title id="modal-custom-header-label" headingLevel="h1" size={TitleSizes['2xl']}>
+                {title}
+            </Title>
+            <p className="pf-v5-u-pt-sm">{dslLanguage?.[2]}</p>
             <div className='container'>
                 <div className='panel-top'>
                     <Editor

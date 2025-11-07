@@ -16,94 +16,55 @@
  */
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.List;
 import java.util.Map;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Karavan application configuration")
 public class Configuration {
+
+    @Schema(description = "Application title", required = true, example = "Apache Camel Karavan")
     private String title;
+
+    @Schema(description = "Application version", required = true, example = "4.14.2")
     private String version;
+
+    @Schema(description = "Infrastructure type (kubernetes or docker)", required = true, example = "docker")
     private String infrastructure;
+
+    @Schema(description = "Current environment name", required = true, example = "dev")
     private String environment;
+
+    @Schema(description = "List of available environments", example = "[\"dev\", \"test\", \"prod\"]")
     private List<String> environments;
+
+    @Schema(description = "List of configuration file names", example = "[\"application.properties\", \"routes.camel.yaml\"]")
     private List<String> configFilenames;
+
+    @Schema(description = "Application status information")
     private List<Object> status;
+
+    @Schema(description = "Advanced configuration properties")
     private Map<String, String> advanced;
 
-    public Configuration() {
-    }
-
-    public Configuration(String title, String version, String infrastructure, String environment, List<String> environments, List<String> configFilenames,
-                         Map<String, String> advanced) {
+    // Custom constructor for backward compatibility (without status field)
+    public Configuration(String title, String version, String infrastructure, String environment,
+                         List<String> environments, List<String> configFilenames, Map<String, String> advanced) {
         this.title = title;
         this.version = version;
         this.infrastructure = infrastructure;
         this.environment = environment;
         this.environments = environments;
         this.configFilenames = configFilenames;
-        this.advanced = advanced;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public String getInfrastructure() {
-        return infrastructure;
-    }
-
-    public void setInfrastructure(String infrastructure) {
-        this.infrastructure = infrastructure;
-    }
-
-    public String getEnvironment() {
-        return environment;
-    }
-
-    public void setEnvironment(String environment) {
-        this.environment = environment;
-    }
-
-    public List<String> getEnvironments() {
-        return environments;
-    }
-
-    public void setEnvironments(List<String> environments) {
-        this.environments = environments;
-    }
-
-    public List<Object> getStatus() {
-        return status;
-    }
-
-    public void setStatus(List<Object> status) {
-        this.status = status;
-    }
-
-    public List<String> getConfigFilenames() {
-        return configFilenames;
-    }
-
-    public void setConfigFilenames(List<String> configFilenames) {
-        this.configFilenames = configFilenames;
-    }
-
-    public Map<String, String> getAdvanced() {
-        return advanced;
-    }
-
-    public void setAdvanced(Map<String, String> advanced) {
         this.advanced = advanced;
     }
 }

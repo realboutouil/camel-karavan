@@ -22,30 +22,29 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.KaravanStartupLoader;
 import org.apache.camel.karavan.kubernetes.KubernetesStatusService;
-import org.eclipse.microprofile.config.ConfigProvider;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 @Path("/public")
 public class PublicResource {
 
-    @Inject
-    KaravanStartupLoader karavanStartupLoader;
-
-    @Inject
-    KubernetesStatusService kubernetesStatusService;
+    private final KaravanStartupLoader karavanStartupLoader;
+    private final KubernetesStatusService kubernetesStatusService;
+    private final KaravanProperties properties;
 
     @GET
     @Path("/auth")
     @Produces(MediaType.TEXT_PLAIN)
     public Response authType() throws Exception {
-        String authType = ConfigProvider.getConfig().getValue("karavan.auth", String.class);
-        return Response.ok(authType).build();
+        return Response.ok(properties.auth()).build();
     }
 
     @GET
@@ -53,9 +52,9 @@ public class PublicResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response ssoConfig() throws Exception {
         Map<String, String> getSsoConfig = Map.of(
-                "url", ConfigProvider.getConfig().getValue("karavan.keycloak.url", String.class),
-                "realm", ConfigProvider.getConfig().getValue("karavan.keycloak.realm", String.class),
-                "clientId", ConfigProvider.getConfig().getValue("karavan.keycloak.frontend.clientId", String.class)
+                "url", properties.keycloak().url(),
+                "realm", properties.keycloak().realm(),
+                "clientId", properties.keycloak().frontend().clientId()
         );
         return Response.ok(getSsoConfig).build();
     }

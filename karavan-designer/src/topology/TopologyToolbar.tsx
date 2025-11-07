@@ -27,7 +27,7 @@ import CogIcon from "@patternfly/react-icons/dist/js/icons/cog-icon";
 import {useTopologyHook} from "./useTopologyHook";
 import DockerIcon from "@patternfly/react-icons/dist/js/icons/docker-icon";
 import {KubernetesIcon} from "../designer/icons/ComponentIcons";
-import {useAppConfigStore} from "../api/ProjectStore";
+// import {useAppConfigStore} from "../api/ProjectStore"; // Not available in standalone designer
 import {useRouteDesignerHook} from "../designer/route/useRouteDesignerHook";
 
 interface Props {
@@ -40,7 +40,7 @@ interface Props {
 
 export function TopologyToolbar (props: Props) {
 
-    const [config] = useAppConfigStore((s) => [s.config], shallow);
+    // const [config] = useAppConfigStore((s) => [s.config], shallow); // Not available in standalone designer
     const [showGroups, setShowGroups, showBeans, setShowBeans, showLegend, setShowLegend] = useTopologyStore((s) =>
         [s.showGroups, s.setShowGroups, s.showBeans, s.setShowBeans, s.showLegend, s.setShowLegend], shallow);
 
@@ -51,7 +51,8 @@ export function TopologyToolbar (props: Props) {
     const {openSelector} = useRouteDesignerHook();
 
     function getInfraButton(): React.JSX.Element {
-        const isKubernetes = config.infrastructure === 'kubernetes';
+        // Default to Kubernetes in standalone designer
+        const isKubernetes = true; // config.infrastructure === 'kubernetes';
         const icon = !isKubernetes ? KubernetesIcon('button-icon-k8s') : <DockerIcon className='icon-docker'/>;
         const fileName = isKubernetes ? 'deployment.jkube.yaml' : 'docker-compose.yaml';
 
@@ -88,18 +89,15 @@ export function TopologyToolbar (props: Props) {
                         variant="primary"
                         onClick={onToggleClick}
                         isExpanded={isToggleOpen}
-                        splitButtonOptions={{
-                            variant: 'action',
-                            items: [
-                                <MenuToggleAction id="route-button" key="split-action" aria-label="Route"
-                                                  className="dev-action-button create-route-button"
-                                                  onClick={(ev) => openSelector(undefined, undefined)}
-                                >
-                                    <PlusIcon/>
-                                    Route
-                                </MenuToggleAction>
-                            ]
-                        }}
+                        splitButtonItems={[
+                            <MenuToggleAction id="route-button" key="split-action" aria-label="Route"
+                                              className="dev-action-button create-route-button"
+                                              onClick={(ev) => openSelector(undefined, undefined)}
+                            >
+                                <PlusIcon/>
+                                Route
+                            </MenuToggleAction>
+                        ]}
                     >
                     </MenuToggle>
                 )}
@@ -125,7 +123,7 @@ export function TopologyToolbar (props: Props) {
                         label="Groups:"
                         isChecked={showGroups}
                         onChange={(_, checked) => setShowGroups(checked)}
-                        isLabelBeforeButton
+                        labelPosition="start"
                     />
                 </Tooltip>
                 <Tooltip content={"Show Beans"} position={"bottom-start"}>
@@ -134,7 +132,7 @@ export function TopologyToolbar (props: Props) {
                         label="Beans:"
                         isChecked={showBeans}
                         onChange={(_, checked) => setShowBeans(checked)}
-                        isLabelBeforeButton
+                        labelPosition="start"
                     />
                 </Tooltip>
                 <Tooltip content={"Show Legend"} position={"bottom-start"}>
@@ -143,14 +141,14 @@ export function TopologyToolbar (props: Props) {
                         label="Legend:"
                         isChecked={showLegend}
                         onChange={(_, checked) => setShowLegend(checked)}
-                        isLabelBeforeButton
+                        labelPosition="start"
                     />
                 </Tooltip>
             </ToolbarItem>
-            <ToolbarItem align={{default:"alignRight"}}>
+            <ToolbarItem align={{default:"alignEnd"}}>
                 {getRouteButton()}
             </ToolbarItem>
-            <ToolbarItem align={{default:"alignRight"}}>
+            <ToolbarItem align={{default:"alignEnd"}}>
                 <Tooltip content={"Add REST API"} position={"bottom"}>
                     <Button className="dev-action-button" size="sm"
                             isDisabled={!isDev}
@@ -162,7 +160,7 @@ export function TopologyToolbar (props: Props) {
                     </Button>
                 </Tooltip>
             </ToolbarItem>
-            <ToolbarItem align={{default:"alignRight"}}>
+            <ToolbarItem align={{default:"alignEnd"}}>
                 <Tooltip content={"Add Kamelet"} position={"bottom"}>
                     <Button className="dev-action-button" size="sm"
                             isDisabled={!isDev}
@@ -174,7 +172,7 @@ export function TopologyToolbar (props: Props) {
                     </Button>
                 </Tooltip>
             </ToolbarItem>
-            <ToolbarItem align={{default:"alignRight"}}>
+            <ToolbarItem align={{default:"alignEnd"}}>
                 <Tooltip content={"Add Bean"} position={"bottom"}>
                     <Button className="dev-action-button" size="sm"
                             isDisabled={!isDev}
@@ -186,7 +184,7 @@ export function TopologyToolbar (props: Props) {
                     </Button>
                 </Tooltip>
             </ToolbarItem>
-            <ToolbarItem align={{default:"alignRight"}}>
+            <ToolbarItem align={{default:"alignEnd"}}>
                 <Button variant={"secondary"}
                         className='bean-button'
                         icon={<CogIcon/>}
@@ -195,7 +193,7 @@ export function TopologyToolbar (props: Props) {
                     Properties
                 </Button>
             </ToolbarItem>
-            <ToolbarItem align={{default:"alignRight"}}>
+            <ToolbarItem align={{default:"alignEnd"}}>
                 {getInfraButton()}
             </ToolbarItem>
         </div>

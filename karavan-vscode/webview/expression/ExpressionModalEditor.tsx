@@ -65,6 +65,7 @@ export function ExpressionModalEditor(props: Props) {
             aria-label="Expression"
             className='expression-modal'
             width={"80%"}
+// @ts-ignore - PatternFly v6: Modal header prop changed
             header={<React.Fragment>
                 <Title id="modal-custom-header-label" headingLevel="h1" size={TitleSizes['2xl']}>
                     {title}

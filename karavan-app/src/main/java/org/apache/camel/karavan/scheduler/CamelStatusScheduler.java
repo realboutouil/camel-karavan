@@ -21,13 +21,14 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.KaravanConstants;
 import org.apache.camel.karavan.model.CamelStatusRequest;
 import org.apache.camel.karavan.model.ContainerType;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.util.Map;
 import java.util.Objects;
@@ -36,44 +37,41 @@ import static org.apache.camel.karavan.KaravanConstants.CAMEL_PREFIX;
 import static org.apache.camel.karavan.KaravanConstants.LABEL_KUBERNETES_RUNTIME;
 import static org.apache.camel.karavan.KaravanEvents.CMD_COLLECT_CAMEL_STATUS;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class CamelStatusScheduler {
 
-    private static final Logger LOGGER = Logger.getLogger(CamelStatusScheduler.class.getName());
+    private final KaravanCache karavanCache;
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanProperties properties;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
-
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @Scheduled(every = "{karavan.camel.status.interval}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     public void collectCamelStatuses() {
-        LOGGER.debug("Collect Camel Statuses");
-         if (ConfigService.inKubernetes()) {
-             karavanCache.getPodContainerStatuses(environment).stream()
-                     .filter(cs -> Objects.equals(cs.getLabels().get(LABEL_KUBERNETES_RUNTIME), CAMEL_PREFIX))
-                     .filter(cs -> Objects.equals(cs.getType(), ContainerType.devmode) || Objects.equals(cs.getType(), ContainerType.packaged))
-                     .filter(cs -> Objects.equals(cs.getCamelRuntime(), KaravanConstants.CamelRuntime.CAMEL_MAIN.getValue()))
-                     .forEach(cs -> {
-                         CamelStatusRequest csr = new CamelStatusRequest(cs.getProjectId(), cs.getContainerName());
-                         eventBus.publish(CMD_COLLECT_CAMEL_STATUS,
-                                 JsonObject.mapFrom(Map.of("containerStatus", cs, "camelStatusRequest", csr))
-                         );
-                     });
-         } else {
-             karavanCache.getPodContainerStatuses(environment).stream()
-                     .filter(cs -> Objects.equals(cs.getCamelRuntime(), KaravanConstants.CamelRuntime.CAMEL_MAIN.getValue()))
-                     .filter(cs -> Objects.equals(cs.getType(), ContainerType.devmode) || Objects.equals(cs.getType(), ContainerType.packaged))
-                     .forEach(cs -> {
-                         CamelStatusRequest csr = new CamelStatusRequest(cs.getProjectId(), cs.getContainerName());
-                         eventBus.publish(CMD_COLLECT_CAMEL_STATUS,
-                                 JsonObject.mapFrom(Map.of("containerStatus", cs, "camelStatusRequest", csr))
-                         );
-                     });
-         }
+        log.debug("Collect Camel Statuses");
+        if (ConfigService.inKubernetes()) {
+            karavanCache.getPodContainerStatuses(properties.environment()).stream()
+                    .filter(cs -> Objects.equals(cs.getLabels().get(LABEL_KUBERNETES_RUNTIME), CAMEL_PREFIX))
+                    .filter(cs -> Objects.equals(cs.getType(), ContainerType.devmode) || Objects.equals(cs.getType(), ContainerType.packaged))
+                    .filter(cs -> Objects.equals(cs.getCamelRuntime(), KaravanConstants.CamelRuntime.CAMEL_MAIN.getValue()))
+                    .forEach(cs -> {
+                        CamelStatusRequest csr = new CamelStatusRequest(cs.getProjectId(), cs.getContainerName());
+                        eventBus.publish(CMD_COLLECT_CAMEL_STATUS,
+                                JsonObject.mapFrom(Map.of("containerStatus", cs, "camelStatusRequest", csr))
+                        );
+                    });
+        } else {
+            karavanCache.getPodContainerStatuses(properties.environment()).stream()
+                    .filter(cs -> Objects.equals(cs.getCamelRuntime(), KaravanConstants.CamelRuntime.CAMEL_MAIN.getValue()))
+                    .filter(cs -> Objects.equals(cs.getType(), ContainerType.devmode) || Objects.equals(cs.getType(), ContainerType.packaged))
+                    .forEach(cs -> {
+                        CamelStatusRequest csr = new CamelStatusRequest(cs.getProjectId(), cs.getContainerName());
+                        eventBus.publish(CMD_COLLECT_CAMEL_STATUS,
+                                JsonObject.mapFrom(Map.of("containerStatus", cs, "camelStatusRequest", csr))
+                        );
+                    });
+        }
     }
 }

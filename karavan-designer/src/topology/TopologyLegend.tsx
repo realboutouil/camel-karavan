@@ -30,7 +30,7 @@ export function TopologyLegend () {
 
 
     return (
-        <Card isCompact isFlat isRounded className="topology-legend-card">
+        <Card isCompact className="topology-legend-card">
             <CardTitle>Legend</CardTitle>
             <CardBody className='card-body'>
                 <Label className='orange' icon={<Badge style={{backgroundColor: COLOR_ORANGE, padding: 0}}>API</Badge>}>REST</Label>

@@ -18,12 +18,10 @@ import React, {useState} from 'react';
 import {
     ExpandableSection
 } from '@patternfly/react-core';
-import {
-    Select,
-    SelectVariant,
-    SelectDirection,
-    SelectOption
-} from '@patternfly/react-core/deprecated';
+import {Text} from '../../utils/PatternFlyCompat';
+// NOTE: These imports are temporary until migration to PatternFly v6 Select
+// @ts-ignore
+import {Select, SelectVariant, SelectDirection, SelectOption} from '@patternfly/react-core';
 import '../../karavan.css';
 import "@patternfly/patternfly/patternfly.css";
 import {CamelMetadataApi, PropertyMeta} from "karavan-core/lib/model/CamelMetadata";
@@ -43,6 +41,7 @@ interface Props {
     onDataFormatChange?: (value: DataFormatDefinition) => void
     integration: Integration,
     dark: boolean,
+    expressionEditor: React.ComponentType<any>
 }
 
 export function DataFormatField(props: Props) {
@@ -127,6 +126,7 @@ export function DataFormatField(props: Props) {
                     property={property}
                     value={value ? (value as any)[property.name] : undefined}
                     onPropertyChange={propertyChanged}
+                    expressionEditor={props.expressionEditor}
                 />
             )}
         </>)
@@ -157,7 +157,7 @@ export function DataFormatField(props: Props) {
                     onToggle={() => {
                         openSelect()
                     }}
-                    onSelect={(_, dataFormat, isPlaceholder) => dataFormatChanged(dataFormat.toString(), value)}
+                    onSelect={(_: any, dataFormat: any, isPlaceholder?: boolean) => dataFormatChanged(dataFormat.toString(), value)}
                     selections={dataFormat}
                     isOpen={selectIsOpen}
                     aria-labelledby={"dataFormat"}

@@ -19,6 +19,7 @@ package org.apache.camel.karavan.docker;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.*;
 import com.github.dockerjava.api.model.*;
+import com.github.dockerjava.api.model.ContainerPort;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
@@ -32,18 +33,16 @@ import io.vertx.core.buffer.Buffer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.model.ContainerImage;
-import org.apache.camel.karavan.model.ContainerType;
-import org.apache.camel.karavan.model.DockerComposeService;
-import org.apache.camel.karavan.model.DockerComposeVolume;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.config.KaravanProperties;
+import org.apache.camel.karavan.model.*;
 import org.apache.camel.karavan.service.CodeService;
 import org.apache.camel.karavan.service.ConfigService;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -57,38 +56,16 @@ import java.util.stream.Collectors;
 import static org.apache.camel.karavan.KaravanConstants.LABEL_PROJECT_ID;
 import static org.apache.camel.karavan.KaravanConstants.LABEL_TYPE;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DockerService {
 
-    public enum PULL_IMAGE {
-        always, ifNotExists, never
-    }
-
-    private static final Logger LOGGER = Logger.getLogger(DockerService.class.getName());
-
-    @ConfigProperty(name = "karavan.docker.network")
-    String networkName;
-
-    @ConfigProperty(name = "karavan.container-image.registry")
-    String registry;
-    @ConfigProperty(name = "karavan.container-image.group")
-    String group;
-    @ConfigProperty(name = "karavan.container-image.registry-username")
-    Optional<String> username;
-    @ConfigProperty(name = "karavan.container-image.registry-password")
-    Optional<String> password;
-
-    @Inject
-    DockerEventHandler dockerEventHandler;
-
-    @Inject
-    CodeService codeService;
-
-    @Inject
-    Vertx vertx;
-
+    private final KaravanProperties properties;
+    private final DockerEventHandler dockerEventHandler;
+    private final CodeService codeService;
+    private final Vertx vertx;
     private DockerClient dockerClient;
-
     private DockerClient dockerClientConnectedToRegistry;
 
     void onStart(@Observes StartupEvent ev) {
@@ -97,6 +74,39 @@ public class DockerService {
                 cmd.exec(dockerEventHandler);
             }
         }
+    }
+
+    public DockerClient getDockerClient() {
+        if (dockerClient == null) {
+            DockerClientConfig config = getDockerClientConfig(true);
+            DockerHttpClient httpClient = getDockerHttpClient(config);
+            dockerClient = DockerClientImpl.getInstance(config, httpClient);
+        }
+        return dockerClient;
+    }
+
+    private DockerClientConfig getDockerClientConfig(boolean connectedToRegistry) {
+        log.info("Docker Client Configuring " + (connectedToRegistry ? "( connectedToRegistry)" : ""));
+        DefaultDockerClientConfig.Builder builder = DefaultDockerClientConfig.createDefaultConfigBuilder();
+        if (connectedToRegistry) {
+            log.info("Docker Client Registry " + properties.containerImage().registry());
+            log.info("Docker Client Username " + (properties.containerImage().registryUsername().isPresent() ? "is not empty " : "is empty"));
+            log.info("Docker Client Password " + (properties.containerImage().registryPassword().isPresent() ? "is not empty " : "is empty"));
+            if (!Objects.equals(properties.containerImage().registry(), "registry:5000") && properties.containerImage().registryUsername().isPresent() && properties.containerImage().registryPassword().isPresent()) {
+                builder.withRegistryUrl(properties.containerImage().registry());
+                builder.withRegistryUsername(properties.containerImage().registryUsername().get());
+                builder.withRegistryPassword(properties.containerImage().registryPassword().get());
+            }
+        }
+        return builder.build();
+    }
+
+    private DockerHttpClient getDockerHttpClient(DockerClientConfig config) {
+        return new ZerodepDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .maxConnections(100)
+                .build();
     }
 
     void onStop(@Observes ShutdownEvent ev) throws IOException {
@@ -110,10 +120,10 @@ public class DockerService {
             try (PingCmd cmd = getDockerClient().pingCmd()) {
                 cmd.exec();
             }
-            LOGGER.info("Docker is available");
+            log.info("Docker is available");
             return true;
         } catch (Exception e) {
-            LOGGER.error("Error connecting Docker: " + e.getMessage());
+            log.error("Error connecting Docker: " + e.getMessage());
             return false;
         }
     }
@@ -149,7 +159,7 @@ public class DockerService {
 
             List<String> env = compose.getEnvironmentList();
 
-            LOGGER.infof("Compose Service started for %s in network:%s", compose.getContainer_name(), networkName);
+            log.info("Compose Service started for {} in network:{}", compose.getContainer_name(), properties.docker().network());
 
             RestartPolicy restartPolicy = RestartPolicy.noRestart();
             if (Objects.equals(compose.getRestart(), RestartPolicy.onFailureRestart(10).getName())) {
@@ -159,11 +169,11 @@ public class DockerService {
             }
 
             return createContainer(compose.getContainer_name(), compose.getImage(),
-                    env, compose.getPortsMap(), healthCheck, labels, compose.getVolumes(), networkName, restartPolicy, pullImage,
+                    env, compose.getPortsMap(), healthCheck, labels, compose.getVolumes(), properties.docker().network(), restartPolicy, pullImage,
                     compose.getCpus(), compose.getCpu_percent(), compose.getMem_limit(), compose.getMem_reservation(), compose.getCommand());
 
         } else {
-            LOGGER.info("Compose Service already exists: " + containers.get(0).getId());
+            log.info("Compose Service already exists: " + containers.get(0).getId());
             return containers.get(0);
         }
     }
@@ -184,11 +194,11 @@ public class DockerService {
             if (Objects.equals(labels.get(LABEL_TYPE), ContainerType.devmode.name())
                     || Objects.equals(labels.get(LABEL_TYPE), ContainerType.build.name())
                     || Objects.equals(labels.get(LABEL_TYPE), ContainerType.devservice.name())) {
-                LOGGER.info("Pulling DevMode image from DockerHub: " + image);
+                log.info("Pulling DevMode image from DockerHub: " + image);
                 pullImageFromDockerHub(image, Objects.equals(pullImage, PULL_IMAGE.always));
             }
             if (Objects.equals(labels.get(LABEL_TYPE), ContainerType.packaged.name())) {
-                LOGGER.info("Pulling Project image from Registry: " + image);
+                log.info("Pulling Project image from Registry: " + image);
                 pullImage(image, Objects.equals(pullImage, PULL_IMAGE.always));
             }
 
@@ -223,17 +233,17 @@ public class DockerService {
                         .withMemoryReservation(DockerUtils.parseMemory(mem_reservation))
                         .withCpuPercent(NumberUtils.toLong(cpu_percent))
                         .withNanoCPUs(NumberUtils.toLong(cpus))
-                        .withNetworkMode(network != null ? network : networkName));
+                        .withNetworkMode(network != null ? network : properties.docker().network()));
 
                 CreateContainerResponse response = createContainerCmd.exec();
-                LOGGER.info("Container created: " + response.getId());
+                log.info("Container created: " + response.getId());
 
                 try (ListContainersCmd cmd = getDockerClient().listContainersCmd().withShowAll(true).withIdFilter(Collections.singleton(response.getId()))) {
                     return cmd.exec().get(0);
                 }
             }
         } else {
-            LOGGER.info("Container already exists: " + containers.get(0).getId());
+            log.info("Container already exists: " + containers.get(0).getId());
             return containers.get(0);
         }
     }
@@ -285,7 +295,7 @@ public class DockerService {
                     .withTarInputStream(new ByteArrayInputStream(byteArrayOutputStream.toByteArray()))
                     .withRemotePath(containerPath).exec();
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
             e.printStackTrace();
         }
     }
@@ -305,7 +315,7 @@ public class DockerService {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
         }
     }
 
@@ -369,7 +379,7 @@ public class DockerService {
                     .toList();
 
             if (pullAlways || images.stream().noneMatch(i -> tags.contains(image))) {
-                var callback = new DockerPullCallback(LOGGER::info);
+                var callback = new DockerPullCallback(log::info);
                 try (PullImageCmd pullImageCmd = getDockerClient().pullImageCmd(image)) {
                     pullImageCmd.exec(callback);
                     callback.awaitCompletion();
@@ -388,7 +398,7 @@ public class DockerService {
                     .toList();
 
             if (pullAlways || images.stream().noneMatch(i -> tags.contains(image))) {
-                var callback = new DockerPullCallback(LOGGER::info);
+                var callback = new DockerPullCallback(log::info);
                 try (PullImageCmd pullImageCmd = getDockerClientNotConnectedToRegistry().pullImageCmd(image)) {
                     pullImageCmd.exec(callback);
                     callback.awaitCompletion();
@@ -398,47 +408,14 @@ public class DockerService {
     }
 
     public void pullImagesForProject(String projectId) throws InterruptedException {
-        if (!Objects.equals(registry, "registry:5000") && username.isPresent() && password.isPresent()) {
-            var repository = registry + "/" + group + "/" + projectId;
+        if (!Objects.equals(properties.containerImage().registry(), "registry:5000") && properties.containerImage().registryUsername().isPresent() && properties.containerImage().registryPassword().isPresent()) {
+            var repository = properties.containerImage().registry() + "/" + properties.containerImage().group() + "/" + projectId;
             try (PullImageCmd cmd = getDockerClient().pullImageCmd(repository)) {
-                var callback = new DockerPullCallback(LOGGER::info);
+                var callback = new DockerPullCallback(log::info);
                 cmd.exec(callback);
                 callback.awaitCompletion();
             }
         }
-    }
-
-    private DockerClientConfig getDockerClientConfig(boolean connectedToRegistry) {
-        LOGGER.info("Docker Client Configuring " + (connectedToRegistry ? "( connectedToRegistry)" : ""));
-        DefaultDockerClientConfig.Builder builder = DefaultDockerClientConfig.createDefaultConfigBuilder();
-        if (connectedToRegistry) {
-            LOGGER.info("Docker Client Registry " + registry);
-            LOGGER.info("Docker Client Username " + (username.isPresent() ? "is not empty " : "is empty"));
-            LOGGER.info("Docker Client Password " + (password.isPresent() ? "is not empty " : "is empty"));
-            if (!Objects.equals(registry, "registry:5000") && username.isPresent() && password.isPresent()) {
-                builder.withRegistryUrl(registry);
-                builder.withRegistryUsername(username.get());
-                builder.withRegistryPassword(password.get());
-            }
-        }
-        return builder.build();
-    }
-
-    private DockerHttpClient getDockerHttpClient(DockerClientConfig config) {
-        return new ZerodepDockerHttpClient.Builder()
-                .dockerHost(config.getDockerHost())
-                .sslConfig(config.getSSLConfig())
-                .maxConnections(100)
-                .build();
-    }
-
-    public DockerClient getDockerClient() {
-        if (dockerClient == null) {
-            DockerClientConfig config = getDockerClientConfig(true);
-            DockerHttpClient httpClient = getDockerHttpClient(config);
-            dockerClient = DockerClientImpl.getInstance(config, httpClient);
-        }
-        return dockerClient;
     }
 
     public DockerClient getDockerClientNotConnectedToRegistry() {
@@ -481,5 +458,9 @@ public class DockerService {
                 }
             }
         }
+    }
+
+    public enum PULL_IMAGE {
+        always, ifNotExists, never
     }
 }

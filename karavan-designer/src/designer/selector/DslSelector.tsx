@@ -22,12 +22,14 @@ import {
     Gallery,
     Modal,
     PageSection,
+    PageSectionVariants,
     Switch,
     TextInputGroup,
-    TextInputGroupUtilities, TextVariants, Text,
+    TextInputGroupUtilities,
     ToggleGroup,
-    ToggleGroupItem, TextContent, Badge, TextInput, Skeleton, Bullseye, Card
+    ToggleGroupItem, Badge, TextInput, Skeleton, Bullseye, Card
 } from '@patternfly/react-core';
+import {Text, TextContent, TextVariants} from '../utils/PatternFlyCompat';
 import './DslSelector.css';
 import {CamelUi} from "../utils/CamelUi";
 import {DslMetaModel} from "../utils/DslMetaModel";
@@ -275,8 +277,8 @@ export function DslSelector(props: Props) {
             isOpen={showSelector}
             onClose={() => close()}
             header={getHeader()}
-            actions={{}}>
-            <PageSection padding={{default: "noPadding"}} variant={dark ? "darker" : "light"}>
+            action={<React.Fragment />}>
+            <PageSection padding={{default: "noPadding"}} variant={dark ? PageSectionVariants.default : PageSectionVariants.default}>
                 {!ready && [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i =>
                     <React.Fragment key={i}>
                         <Skeleton key={i} width={i * 10 + '%'} screenreaderText="Loading..."/>
@@ -294,7 +296,7 @@ export function DslSelector(props: Props) {
                         <DslCard key={dsl.name + ":" + index} dsl={dsl} index={index} onDslSelect={selectDsl}/>
                     )}
                     {moreElements > 0 &&
-                        <Card isCompact isPlain isFlat isRounded style={{minHeight: '140px'}}>
+                        <Card isCompact isPlain style={{minHeight: '140px'}}>
                             <Bullseye>
                                 <Button variant='link'
                                         onClick={_ => setPageSize(pageSize + 10)}>{`${moreElements} more`}</Button>

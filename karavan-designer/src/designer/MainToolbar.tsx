@@ -30,7 +30,7 @@ interface Props {
 export function MainToolbar(props: Props) {
 
     return (
-        <PageSection className="tools-section" variant={PageSectionVariants.light}>
+        <PageSection className="tools-section" variant={PageSectionVariants.default}>
             <Flex className="tools" justifyContent={{default: 'justifyContentFlexStart'}}
                   alignItems={{default: 'alignItemsCenter'}}>
                 <FlexItem flex={{default: "flexNone"}}>

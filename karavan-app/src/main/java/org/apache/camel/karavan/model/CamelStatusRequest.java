@@ -16,32 +16,22 @@
  */
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Request object for querying Camel status information")
 public class CamelStatusRequest {
 
+    @Schema(description = "The unique identifier of the project", example = "my-camel-project", required = true)
     private String projectId;
+
+    @Schema(description = "The name of the container to query status for", example = "camel-container-1", required = true)
     private String containerName;
-
-    public CamelStatusRequest() {
-    }
-
-    public CamelStatusRequest(String projectId, String containerName) {
-        this.projectId = projectId;
-        this.containerName = containerName;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public String getContainerName() {
-        return containerName;
-    }
-
-    public void setContainerName(String containerName) {
-        this.containerName = containerName;
-    }
 }

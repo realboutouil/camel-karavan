@@ -19,10 +19,10 @@ import {
     Badge, capitalize,
     Card, CardBody, CardFooter,
     CardHeader,
-    Text,
     Tooltip,
     TooltipPosition,
 } from '@patternfly/react-core';
+import {Text} from '../utils/PatternFlyCompat';
 import './DslSelector.css';
 import {CamelUi} from "../utils/CamelUi";
 import {DslMetaModel} from "../utils/DslMetaModel";
@@ -47,7 +47,7 @@ export function DslCard (props: Props) {
     const isRemote =  dsl.remote;
     const classNameBadge = "navigation-label label-" + dsl.navigation + ((dsl.navigation === 'eip' || dsl?.supportLevel.toLowerCase() === 'stable')? '' : '-preview');
     return (
-        <Card key={dsl.dsl + index} isCompact isPlain isFlat isRounded className="dsl-card"
+        <Card key={dsl.dsl + index} isCompact isPlain className="dsl-card"
               onClick={event => selectDsl(event, dsl)}>
             <CardHeader className="header-labels">
                 <Badge className={classNameBadge}>{navigation}</Badge>

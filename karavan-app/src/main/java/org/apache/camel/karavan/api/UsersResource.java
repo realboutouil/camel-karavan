@@ -24,16 +24,17 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import lombok.RequiredArgsConstructor;
 import org.jboss.resteasy.reactive.NoCache;
 
 import java.util.Set;
 
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 @Path("/ui/users")
 @Produces(MediaType.APPLICATION_JSON)
 public class UsersResource {
 
-    @Inject
-    SecurityIdentity securityIdentity;
+    private final SecurityIdentity securityIdentity;
 
     @GET
     @Path("/me")

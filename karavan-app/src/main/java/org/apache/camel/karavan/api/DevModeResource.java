@@ -21,35 +21,35 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
-import org.apache.camel.karavan.KaravanConstants;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.model.PodContainerStatus;
 import org.apache.camel.karavan.model.Project;
 import org.apache.camel.karavan.service.ProjectService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.util.Map;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_DELETE_CONTAINER;
 import static org.apache.camel.karavan.KaravanEvents.CMD_RELOAD_PROJECT_CODE;
 
+@Slf4j
 @Path("/ui/devmode")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DevModeResource {
 
-    private static final Logger LOGGER = Logger.getLogger(DevModeResource.class.getName());
+    private final KaravanCache karavanCache;
+    private final ProjectService projectService;
+    private final EventBus eventBus;
+    private final KaravanProperties properties;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
-
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    ProjectService projectService;
-
-    @Inject
-    EventBus eventBus;
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response runProjectInDeveloperMode(Project project) throws Exception {
+        return runProjectInDeveloperMode(project, false, false);
+    }
 
     @POST
     @Produces(MediaType.APPLICATION_JSON)
@@ -64,16 +64,9 @@ public class DevModeResource {
                 return Response.notModified().build();
             }
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error("Error running project in developer mode", e);
             return Response.serverError().entity(e).build();
         }
-    }
-
-    @POST
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response runProjectInDeveloperMode(Project project) throws Exception {
-        return runProjectInDeveloperMode(project, false, false);
     }
 
     @GET
@@ -97,7 +90,7 @@ public class DevModeResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/container/{projectId}")
     public Response getPodStatus(@PathParam("projectId") String projectId) throws RuntimeException {
-        PodContainerStatus cs = karavanCache.getDevModePodContainerStatus(projectId, environment);
+        PodContainerStatus cs = karavanCache.getDevModePodContainerStatus(projectId, properties.environment());
         if (cs != null) {
             return Response.ok(cs).build();
         } else {

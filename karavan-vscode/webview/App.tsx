@@ -16,8 +16,9 @@
  */
 import * as React from "react";
 import {
-  Page, PageSection, Spinner, Text, TextVariants
+  Page, PageSection, PageSectionVariants, Spinner
 } from "@patternfly/react-core";
+import { Text, TextVariants } from "./designer/utils/PatternFlyCompat";
 import { KaravanDesigner } from "./designer/KaravanDesigner";
 import vscode from "./vscode";
 import { KameletApi } from "core/api/KameletApi";
@@ -48,7 +49,7 @@ interface State {
   active: boolean
   tab?: "routes" | "rest" | "beans"
   files: IntegrationFile[],
-  propertyPlaceholders: string[],
+  propertyPlaceholders: [string, string][],
   beans: BeanFactoryDefinition[]
 }
 
@@ -100,7 +101,7 @@ class App extends React.Component<Props, State> {
     console.log("message.command", message.command);
     switch (message.command) {
       case 'kamelets':
-        KameletApi.saveKamelets(message.kamelets, true);
+        KameletApi.saveCustomKamelets(message.kamelets, true);
         this.setState((prevState: State) => {
           prevState.loadingMessages.push("Kamelets loaded");
           return { loadingMessages: prevState.loadingMessages }
@@ -233,7 +234,7 @@ class App extends React.Component<Props, State> {
     return (
       <Page className="karavan">
         {!loaded &&
-          <PageSection variant={dark ? "dark" : "light"} className="loading-page">
+          <PageSection variant={PageSectionVariants.default} className="loading-page">
             <Spinner className="progress-stepper" diameter="80px" aria-label="Loading..." />
             {/* {loadingMessages.map(message => <Text component={TextVariants.h5}>{message}</Text>)} */}
             <Text component={TextVariants.h5}>Loading...</Text>
@@ -246,6 +247,7 @@ class App extends React.Component<Props, State> {
             filename={filename}
             yaml={yaml}
             onSave={(filename, yaml, propertyOnly) => this.save(filename, yaml, propertyOnly)}
+            onCreateNewRoute={() => console.log("onCreateNewRoute")}
             tab={tab}
             dark={dark}
             onSaveCustomCode={(name, code) => this.saveJavCode(name, code)}
@@ -273,11 +275,10 @@ class App extends React.Component<Props, State> {
           <TopologyTab
             hideToolbar={true}
             files={this.state.files}
-            onClickAddRoute={() => vscode.postMessage({ command: 'createIntegration' })}
+            onClickAddRouteConfiguration={() => vscode.postMessage({ command: 'createIntegration' })}
             onClickAddREST={() => vscode.postMessage({ command: 'createIntegration' })}
             onClickAddBean={() => vscode.postMessage({ command: 'createIntegration' })}
             onClickAddKamelet={() => vscode.postMessage({ command: 'createIntegration' })}
-            onSetFile={(fileName) => vscode.postMessage({ command: 'openFile', fileName: fileName })}
           />
         }
       </Page>

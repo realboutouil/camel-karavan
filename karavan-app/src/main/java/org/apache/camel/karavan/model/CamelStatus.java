@@ -17,56 +17,32 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.List;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Represents the status information of a Camel context and its components")
 public class CamelStatus {
 
-    String projectId;
-    String containerName;
-    List<CamelStatusValue> statuses;
-    String env;
+    @Schema(description = "The unique identifier of the project", example = "my-camel-project")
+    private String projectId;
 
-    public CamelStatus() {
-    }
+    @Schema(description = "The name of the container running the Camel context", example = "camel-container-1")
+    private String containerName;
 
-    public CamelStatus(String projectId, String containerName, List<CamelStatusValue> statuses, String env) {
-        this.projectId = projectId;
-        this.containerName = containerName;
-        this.statuses = statuses;
-        this.env = env;
-    }
+    @Schema(description = "List of status values for various Camel components")
+    private List<CamelStatusValue> statuses;
 
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public String getContainerName() {
-        return containerName;
-    }
-
-    public void setContainerName(String containerName) {
-        this.containerName = containerName;
-    }
-
-    public List<CamelStatusValue> getStatuses() {
-        return statuses;
-    }
-
-    public void setStatuses(List<CamelStatusValue> statuses) {
-        this.statuses = statuses;
-    }
-
-    public String getEnv() {
-        return env;
-    }
-
-    public void setEnv(String env) {
-        this.env = env;
-    }
+    @Schema(description = "The environment where the Camel context is running", example = "dev")
+    private String env;
 
     public CamelStatus copy() {
         return new CamelStatus(this.projectId, this.containerName, List.copyOf(this.statuses), this.env);

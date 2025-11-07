@@ -21,16 +21,17 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.jwt.auth.principal.DefaultJWTCallerPrincipal;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
+import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.jwt.Claims;
 
 import java.util.HashMap;
 import java.util.Objects;
 
 
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class AbstractApiResource {
 
-    @Inject
-    SecurityIdentity securityIdentity;
+    private final SecurityIdentity securityIdentity;
 
     public HashMap<String, String> getIdentity(SecurityContext securityContext) {
         var identity = new HashMap<String, String>();

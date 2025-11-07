@@ -21,17 +21,20 @@ import io.quarkus.vertx.ConsumeEvent;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.model.DeploymentStatus;
 
 import static org.apache.camel.karavan.KaravanEvents.DEPLOYMENT_DELETED;
 import static org.apache.camel.karavan.KaravanEvents.DEPLOYMENT_UPDATED;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DeploymentStatusListener {
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
     @ConsumeEvent(value = DEPLOYMENT_DELETED, blocking = true, ordered = true)
     public void cleanDeploymentStatus(JsonObject data) {

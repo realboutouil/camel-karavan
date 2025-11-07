@@ -24,18 +24,18 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
-import org.apache.camel.karavan.KaravanConstants;
 import org.apache.camel.karavan.docker.DockerComposeConverter;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
 import org.apache.camel.karavan.model.ContainerType;
 import org.apache.camel.karavan.model.DockerComposeService;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.model.PodContainerStatus;
 import org.apache.camel.karavan.service.ConfigService;
 import org.apache.camel.karavan.service.ProjectService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,28 +43,17 @@ import java.util.stream.Collectors;
 import static org.apache.camel.karavan.KaravanConstants.*;
 import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_UPDATED;
 
+@Slf4j
 @Path("/ui/container")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ContainerResource {
 
-    @Inject
-    EventBus eventBus;
-
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    KubernetesService kubernetesService;
-
-    @Inject
-    DockerService dockerService;
-
-    @Inject
-    ProjectService projectService;
-
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
-
-    private static final Logger LOGGER = Logger.getLogger(ContainerResource.class.getName());
+    private final EventBus eventBus;
+    private final KaravanCache karavanCache;
+    private final KubernetesService kubernetesService;
+    private final DockerService dockerService;
+    private final ProjectService projectService;
+    private final KaravanProperties properties;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -107,10 +96,19 @@ public class ContainerResource {
             return Response.ok().build();
         } catch (Exception e) {
             var error = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-            var result = "Error while executing command " + command + " on " + projectId + ": "+ error;
-            LOGGER.error(result);
+            var result = "Error while executing command " + command + " on " + projectId + ": " + error;
+            log.error(result);
             return Response.serverError().entity(result).build();
         }
+    }
+
+    private void setContainerStatusTransit(String projectId, String name, String type) {
+        PodContainerStatus status = karavanCache.getPodContainerStatus(projectId, properties.environment(), name);
+        if (status == null) {
+            status = PodContainerStatus.createByType(projectId, properties.environment(), ContainerType.valueOf(type));
+        }
+        status.setInTransit(true);
+        eventBus.publish(POD_CONTAINER_UPDATED, JsonObject.mapFrom(status));
     }
 
     public void deployContainer(String projectId, String type, JsonObject command) throws InterruptedException {
@@ -144,17 +142,9 @@ public class ContainerResource {
     private DockerService.PULL_IMAGE needPull(JsonObject command) {
         try {
             return DockerService.PULL_IMAGE.valueOf(command.getString("pullImage"));
-        } catch (Exception ignored) {}
-        return DockerService.PULL_IMAGE.never;
-    }
-
-    private void setContainerStatusTransit(String projectId, String name, String type) {
-        PodContainerStatus status = karavanCache.getPodContainerStatus(projectId, environment, name);
-        if (status == null) {
-            status = PodContainerStatus.createByType(projectId, environment, ContainerType.valueOf(type));
+        } catch (Exception ignored) {
         }
-        status.setInTransit(true);
-        eventBus.publish(POD_CONTAINER_UPDATED, JsonObject.mapFrom(status));
+        return DockerService.PULL_IMAGE.never;
     }
 
     @GET
@@ -190,7 +180,7 @@ public class ContainerResource {
             }
             return Response.accepted().build();
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
             return Response.notModified().build();
         }
     }
@@ -200,7 +190,7 @@ public class ContainerResource {
     @Path("/log/watch/{env}/{name}")
     @Produces(MediaType.SERVER_SENT_EVENTS)
     public Multi<String> getContainerLogWatch(@PathParam("env") String env, @PathParam("name") String name) {
-        LOGGER.info("Start sourcing");
+        log.info("Start sourcing");
         return eventBus.<String>consumer(name + "-" + kubernetesService.getNamespace()).toMulti().map(Message::body);
     }
 }

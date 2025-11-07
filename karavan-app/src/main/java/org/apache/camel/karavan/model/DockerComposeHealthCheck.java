@@ -17,67 +17,33 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.List;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Docker Compose health check configuration for container health monitoring")
 public class DockerComposeHealthCheck {
 
+    @Schema(description = "Time between health checks", example = "30s")
     private String interval;
+
+    @Schema(description = "Number of consecutive failures needed to mark container as unhealthy", example = "3")
     private Integer retries;
+
+    @Schema(description = "Maximum time to wait for a health check", example = "10s")
     private String timeout;
+
+    @Schema(description = "Grace period before starting health checks", example = "40s")
     private String start_period;
+
+    @Schema(description = "Command to run to check health (e.g., CMD-SHELL, CMD)", example = "[\"CMD-SHELL\", \"curl -f http://localhost:8080/health || exit 1\"]")
     private List<String> test;
-
-    public DockerComposeHealthCheck() {
-    }
-
-    public String getInterval() {
-        return interval;
-    }
-
-    public void setInterval(String interval) {
-        this.interval = interval;
-    }
-
-    public Integer getRetries() {
-        return retries;
-    }
-
-    public void setRetries(Integer retries) {
-        this.retries = retries;
-    }
-
-    public String getTimeout() {
-        return timeout;
-    }
-
-    public void setTimeout(String timeout) {
-        this.timeout = timeout;
-    }
-
-    public List<String> getTest() {
-        return test;
-    }
-
-    public void setTest(List<String> test) {
-        this.test = test;
-    }
-
-    public String getStart_period() {
-        return start_period;
-    }
-
-    public void setStart_period(String start_period) {
-        this.start_period = start_period;
-    }
-
-    @Override
-    public String toString() {
-        return "HealthCheckConfig{" +
-                "interval='" + interval + '\'' +
-                ", retries=" + retries +
-                ", timeout='" + timeout + '\'' +
-                ", start_period='" + start_period + '\'' +
-                ", test=" + test +
-                '}';
-    }
 }

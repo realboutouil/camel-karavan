@@ -38,12 +38,12 @@ export function EipTab(props: Props) {
     const { elements } = props;
 
     return (
-        <PageSection variant={props.dark ? PageSectionVariants.darker : PageSectionVariants.light}
+        <PageSection variant={PageSectionVariants.default}
             padding={{ default: 'noPadding' }} className="kamelet-section knowledbase-eip-section">
 
             {isModalOpen && <EipModal/>}
             <PageSection isFilled className="kamelets-page"
-                         variant={props.dark ? PageSectionVariants.darker : PageSectionVariants.light}>
+                         variant={PageSectionVariants.default}>
                 <Gallery hasGutter>
                     {elements.map(c => (
                         <EipCard key={c.name} element={c}/>

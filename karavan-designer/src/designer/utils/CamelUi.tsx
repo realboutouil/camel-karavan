@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import React from 'react';
 import {KameletApi} from "karavan-core/lib/api/KameletApi";
 import {KameletModel} from "karavan-core/lib/model/KameletModels";
 import {DslMetaModel} from "./DslMetaModel";
@@ -91,7 +92,6 @@ import {
     SplitIcon,
     ToIcon,
 } from "../icons/EipIcons";
-import React from "react";
 import {TopologyUtils} from "karavan-core/lib/api/TopologyUtils";
 import {getIntegrations} from "../../topology/TopologyApi";
 import {toKebabCase} from "./ValidatorUtils";
@@ -301,10 +301,10 @@ export class CamelUi {
     }
 
     static getKameletDslMetaModel = (type: 'source' | "sink" | "action"): DslMetaModel[] => {
-        return KameletApi.getKamelets().filter((k) => k.metadata.labels["camel.apache.org/kamelet.type"] === type)
-            .map((k) => {
+        return KameletApi.getAllKamelets().filter((k: any) => k.metadata.labels["camel.apache.org/kamelet.type"] === type)
+            .map((k: any) => {
                 const descriptionLines = k.description().split("\n")
-                    .filter(line => line !== undefined && line.trim().length > 0);
+                    .filter((line: any) => line !== undefined && line.trim().length > 0);
                 const description = descriptionLines.at(0);
                 return new DslMetaModel({
                     dsl: type === 'source' ? "FromDefinition" : "ToDefinition",

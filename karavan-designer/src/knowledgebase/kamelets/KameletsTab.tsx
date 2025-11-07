@@ -37,14 +37,14 @@ export function KameletsTab(props: Props) {
 
     const [isModalOpen] = useKnowledgebaseStore((s) => [s.isModalOpen], shallow)
 
-    const {kameletList, dark} = props;
+    const {kameletList} = props;
 
     return (
-        <PageSection variant={dark ? PageSectionVariants.darker : PageSectionVariants.light}
+        <PageSection variant={PageSectionVariants.default}
                      padding={{default: 'noPadding'}} className="kamelet-section">
             {isModalOpen && <KameletModal/>}
             <PageSection isFilled className="kamelets-page"
-                         variant={dark ? PageSectionVariants.darker : PageSectionVariants.light}>
+                         variant={PageSectionVariants.default}>
                 <Gallery hasGutter>
                     {kameletList.map(k => (
                         <KameletCard key={k.metadata.name} kamelet={k} onChange={props.onChange} />

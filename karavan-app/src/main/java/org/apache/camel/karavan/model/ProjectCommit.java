@@ -17,74 +17,38 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Represents a Git commit in a project with author information and file changes")
 public class ProjectCommit {
+
+    @Schema(description = "Commit ID (SHA-1 hash)", example = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0")
     private String id;
+
+    @Schema(description = "Project identifier", example = "my-camel-project")
     private String projectId;
+
+    @Schema(description = "Name of the commit author", example = "John Doe")
     private String authorName;
+
+    @Schema(description = "Email address of the commit author", example = "john.doe@example.com")
     private String authorEmail;
+
+    @Schema(description = "Commit message", example = "Add new route for processing orders")
     private String message;
+
+    @Schema(description = "List of file changes (diffs) in this commit")
+    @Builder.Default
     private List<ProjectFileCommitDiff> diffs = new ArrayList<>();
-
-    public ProjectCommit() {
-    }
-
-    public ProjectCommit(String id, String projectId, String authorName, String authorEmail, String message, List<ProjectFileCommitDiff> diffs) {
-        this.id = id;
-        this.projectId = projectId;
-        this.authorName = authorName;
-        this.authorEmail = authorEmail;
-        this.message = message;
-        this.diffs = diffs;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public String getAuthorName() {
-        return authorName;
-    }
-
-    public void setAuthorName(String authorName) {
-        this.authorName = authorName;
-    }
-
-    public String getAuthorEmail() {
-        return authorEmail;
-    }
-
-    public void setAuthorEmail(String authorEmail) {
-        this.authorEmail = authorEmail;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public List<ProjectFileCommitDiff> getDiffs() {
-        return diffs;
-    }
-
-    public void setDiffs(List<ProjectFileCommitDiff> diffs) {
-        this.diffs = diffs;
-    }
 }

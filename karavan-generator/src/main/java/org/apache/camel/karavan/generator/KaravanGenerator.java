@@ -24,7 +24,7 @@ public final class KaravanGenerator {
         String rootPath = args.length > 0 ? args[0] : "";
         boolean all = args.length == 0;
         String[] paths = all
-                ? new String[] {"karavan-core/test", "karavan-app/src/main/resources", "karavan-designer/public", "karavan-vscode"}
+                ? new String[] {"karavan-core/test", "karavan-app/src/main/resources", "karavan-space/public", "karavan-designer/public", "karavan-vscode"}
                 : new String[] {"karavan-core/test", "karavan-app/src/main/resources"};
         System.out.println("Generating Root Path: " + rootPath);
         for (String path : paths) {

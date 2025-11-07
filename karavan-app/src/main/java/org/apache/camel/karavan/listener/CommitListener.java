@@ -22,29 +22,28 @@ import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.model.Project;
 import org.apache.camel.karavan.service.ProjectService;
-import org.jboss.logging.Logger;
 
 import java.util.List;
 
 import static org.apache.camel.karavan.KaravanEvents.*;
 
+@Slf4j
 @Default
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class CommitListener {
 
-    private static final Logger LOGGER = Logger.getLogger(CommitListener.class.getName());
+    private final ProjectService projectService;
 
-    @Inject
-    ProjectService projectService;
-
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = CMD_PUSH_PROJECT, blocking = true, ordered = true)
     public void onCommitAndPush(JsonObject event) throws Exception {
-        LOGGER.info("Commit event: " + event.encodePrettily());
+        log.info("Commit event: " + event.encodePrettily());
         String projectId = event.getString("projectId");
         String message = event.getString("message");
         String userId = event.getString("userId");
@@ -59,7 +58,7 @@ public class CommitListener {
             }
         } catch (Exception e) {
             var error = e.getCause() != null ? e.getCause() : e;
-            LOGGER.error("Failed to commit event", error);
+            log.error("Failed to commit event", error);
             if (userId != null) {
                 eventBus.publish(NOTIFICATION_ERROR, JsonObject.of(
                         "userId", userId,

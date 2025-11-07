@@ -22,6 +22,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.service.ConfigService;
 
@@ -29,17 +30,13 @@ import java.util.HashMap;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_SHARE_CONFIGURATION;
 
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 @Path("/ui/configuration")
 public class ConfigurationResource {
 
-    @Inject
-    ConfigService configService;
-
-    @Inject
-    DockerService dockerService;
-
-    @Inject
-    EventBus eventBus;
+    private final ConfigService configService;
+    private final DockerService dockerService;
+    private final EventBus eventBus;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -62,7 +59,7 @@ public class ConfigurationResource {
     @Path("/share/")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response share(HashMap<String, String> params)  {
+    public Response share(HashMap<String, String> params) {
         try {
             eventBus.publish(CMD_SHARE_CONFIGURATION, JsonObject.mapFrom(params));
             return Response.ok().build();

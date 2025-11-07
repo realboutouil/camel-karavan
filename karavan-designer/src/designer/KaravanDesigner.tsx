@@ -212,7 +212,7 @@ export function KaravanDesigner(props: Props) {
 
     function getMainPart() {
         return (
-            <PageSection variant={props.dark ? PageSectionVariants.darker : PageSectionVariants.light} className="page" isFilled padding={{default: 'noPadding'}}>
+            <PageSection variant={props.dark ? PageSectionVariants.default : PageSectionVariants.default} className="page" isFilled padding={{default: 'noPadding'}}>
                 <div className={"main-tabs-wrapper"}>
                     <Tabs className="main-tabs"
                           activeKey={tab}

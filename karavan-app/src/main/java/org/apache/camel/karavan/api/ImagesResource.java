@@ -16,6 +16,7 @@
  */
 package org.apache.camel.karavan.api;
 
+import io.quarkus.security.identity.SecurityIdentity;
 import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.inject.Inject;
@@ -41,17 +42,19 @@ import static org.apache.camel.karavan.KaravanEvents.CMD_PULL_IMAGES;
 @Path("/ui/image")
 public class ImagesResource extends AbstractApiResource {
 
-    @Inject
-    DockerService dockerService;
+    private final DockerService dockerService;
+    private final RegistryService registryService;
+    private final ProjectService projectService;
+    private final EventBus eventBus;
 
     @Inject
-    RegistryService registryService;
-
-    @Inject
-    ProjectService projectService;
-
-    @Inject
-    EventBus eventBus;
+    public ImagesResource(SecurityIdentity securityIdentity, DockerService dockerService, RegistryService registryService, ProjectService projectService, EventBus eventBus) {
+        super(securityIdentity);
+        this.dockerService = dockerService;
+        this.registryService = registryService;
+        this.projectService = projectService;
+        this.eventBus = eventBus;
+    }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -89,7 +92,7 @@ public class ImagesResource extends AbstractApiResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/project/{imageName}")
     public Response deleteImage(@PathParam("imageName") String imageName) {
-        imageName= new String(Base64.decode(imageName));
+        imageName = new String(Base64.decode(imageName));
         if (ConfigService.inKubernetes()) {
             return Response.ok().build();
         } else {
@@ -102,7 +105,7 @@ public class ImagesResource extends AbstractApiResource {
     @Path("/pull/")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response share(HashMap<String, String> params)  {
+    public Response share(HashMap<String, String> params) {
         try {
             eventBus.publish(CMD_PULL_IMAGES, JsonObject.mapFrom(params));
             return Response.ok().build();

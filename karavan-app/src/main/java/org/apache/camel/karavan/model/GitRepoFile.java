@@ -17,38 +17,25 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Represents a file in a Git repository with its content and metadata")
 public class GitRepoFile {
+
+    @Schema(description = "File name or path within the repository", example = "src/main/routes/my-route.yaml")
     private String name;
+
+    @Schema(description = "Timestamp of the last commit that modified this file in milliseconds", example = "1699564800000")
     private Long lastCommitTimestamp;
+
+    @Schema(description = "File content as a string", example = "- route:\n    from:\n      uri: timer:tick")
     private String body;
-
-    public GitRepoFile(String name, Long lastCommitTimestamp, String body) {
-        this.name = name;
-        this.lastCommitTimestamp = lastCommitTimestamp;
-        this.body = body;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Long getLastCommitTimestamp() {
-        return lastCommitTimestamp;
-    }
-
-    public void setLastCommitTimestamp(Long lastCommitTimestamp) {
-        this.lastCommitTimestamp = lastCommitTimestamp;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public void setBody(String body) {
-        this.body = body;
-    }
 }

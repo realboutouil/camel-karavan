@@ -21,6 +21,7 @@ import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.model.*;
 
 import java.time.Instant;
@@ -36,6 +37,7 @@ import static org.apache.camel.karavan.KaravanEvents.*;
 
 @Default
 @Singleton
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class KaravanCache {
 
     private final Map<String, Project> projects = new ConcurrentHashMap<>();
@@ -48,56 +50,17 @@ public class KaravanCache {
     private final Map<String, ServiceStatus> serviceStatuses = new ConcurrentHashMap<>();
     private final Map<String, CamelStatus> camelStatuses = new ConcurrentHashMap<>();
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
+    public List<Project> getProjects() {
+        return new ArrayList<>(getCopyProjects());
+    }
 
     // lists of copies
     private List<Project> getCopyProjects() {
         List<Project> copy = new ArrayList<>(projects.size());
         projects.values().forEach(e -> copy.add(e.copy()));
         return copy;
-    }
-
-    private List<ProjectFile> getCopyProjectFiles() {
-        List<ProjectFile> copy = new ArrayList<>(files.size());
-        files.values().forEach(e -> copy.add(e.copy()));
-        return copy;
-    }
-
-    private Map<String, ProjectFile> getCopyProjectFilesMap() {
-        Map<String, ProjectFile> copy = new ConcurrentHashMap<>(files.size());
-        files.forEach((key, value) -> copy.put(key, value.copy()));
-        return copy;
-    }
-
-    private List<ProjectFile> getCopyProjectFilesCommited() {
-        List<ProjectFile> copy = new ArrayList<>(filesCommited.size());
-        filesCommited.values().forEach(e -> copy.add(e.copy()));
-        return copy;
-    }
-
-    public List<CamelStatus> getCopyCamelStatuses() {
-        List<CamelStatus> copy = new ArrayList<>(camelStatuses.size());
-        camelStatuses.values().forEach(e -> copy.add(e.copy()));
-        return copy;
-    }
-
-    public List<PodContainerStatus> getCopyPodContainerStatuses() {
-        List<PodContainerStatus> copy = new ArrayList<>(podContainerStatuses.size());
-        podContainerStatuses.values().forEach(e -> copy.add(e.copy()));
-        return copy;
-    }
-
-    public List<DeploymentStatus> getCopyDeploymentStatuses() {
-        List<DeploymentStatus> copy = new ArrayList<>(deploymentStatuses.size());
-        deploymentStatuses.values().forEach(e -> copy.add(e.copy()));
-        return copy;
-    }
-
-
-    public List<Project> getProjects() {
-        return new ArrayList<>(getCopyProjects());
     }
 
     public void saveProject(Project project, boolean startup) {
@@ -108,19 +71,27 @@ public class KaravanCache {
         }
     }
 
-    public List<ProjectFile> getProjectFiles(String projectId) {
-        return getCopyProjectFiles().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId)).toList();
-    }
-
     public Map<String, ProjectFile> getProjectFilesMap(String projectId) {
         return getCopyProjectFilesMap().entrySet().stream()
                 .filter(es -> !Objects.isNull(es.getValue()) && Objects.equals(es.getValue().getProjectId(), projectId))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
+    private Map<String, ProjectFile> getCopyProjectFilesMap() {
+        Map<String, ProjectFile> copy = new ConcurrentHashMap<>(files.size());
+        files.forEach((key, value) -> copy.put(key, value.copy()));
+        return copy;
+    }
+
     public ProjectFile getProjectFile(String projectId, String filename) {
         List<ProjectFile> list = getCopyProjectFiles().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId) && Objects.equals(pf.getName(), filename)).toList();
         return !list.isEmpty() ? list.get(0) : null;
+    }
+
+    private List<ProjectFile> getCopyProjectFiles() {
+        List<ProjectFile> copy = new ArrayList<>(files.size());
+        files.values().forEach(e -> copy.add(e.copy()));
+        return copy;
     }
 
     public List<ProjectFile> getProjectFilesByName(String filename) {
@@ -147,6 +118,28 @@ public class KaravanCache {
                 .forEach(f -> saveProjectFileCommited(f.copy()));
     }
 
+    public List<ProjectFile> getProjectFilesCommited(String projectId) {
+        return getCopyProjectFilesCommited().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId)).toList();
+    }
+
+    public void deleteProjectFileCommited(String projectId, String filename) {
+        filesCommited.remove(GroupedKey.create(projectId, DEV, filename));
+    }
+
+    public List<ProjectFile> getProjectFiles(String projectId) {
+        return getCopyProjectFiles().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId)).toList();
+    }
+
+    public void saveProjectFileCommited(ProjectFile file) {
+        filesCommited.put(GroupedKey.create(file.getProjectId(), DEV, file.getName()), file);
+    }
+
+    private List<ProjectFile> getCopyProjectFilesCommited() {
+        List<ProjectFile> copy = new ArrayList<>(filesCommited.size());
+        filesCommited.values().forEach(e -> copy.add(e.copy()));
+        return copy;
+    }
+
     public void saveProjectFiles(Map<String, ProjectFile> filesToSave, boolean startup) {
         long lastUpdate = Instant.now().toEpochMilli();
         filesToSave.forEach((groupedKey, projectFile) -> projectFile.setLastUpdate(lastUpdate));
@@ -164,21 +157,9 @@ public class KaravanCache {
         }
     }
 
-    public List<ProjectFile> getProjectFilesCommited(String projectId) {
-        return getCopyProjectFilesCommited().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId)).toList();
-    }
-
     public ProjectFile getProjectFileCommited(String projectId, String filename) {
         List<ProjectFile> list = getCopyProjectFilesCommited().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId) && Objects.equals(pf.getName(), filename)).toList();
         return !list.isEmpty() ? list.get(0) : null;
-    }
-
-    public void deleteProjectFileCommited(String projectId, String filename) {
-        filesCommited.remove(GroupedKey.create(projectId, DEV, filename));
-    }
-
-    public void saveProjectFileCommited(ProjectFile file) {
-        filesCommited.put(GroupedKey.create(file.getProjectId(), DEV, file.getName()), file);
     }
 
     public void deleteProject(String projectId, boolean startup) {
@@ -207,6 +188,12 @@ public class KaravanCache {
 
     public List<DeploymentStatus> getDeploymentStatuses() {
         return new ArrayList<>(getCopyDeploymentStatuses());
+    }
+
+    public List<DeploymentStatus> getCopyDeploymentStatuses() {
+        List<DeploymentStatus> copy = new ArrayList<>(deploymentStatuses.size());
+        deploymentStatuses.values().forEach(e -> copy.add(e.copy()));
+        return copy;
     }
 
     public List<DeploymentStatus> getDeploymentStatuses(String env) {
@@ -245,6 +232,12 @@ public class KaravanCache {
         return new ArrayList<>(getCopyPodContainerStatuses());
     }
 
+    public List<PodContainerStatus> getCopyPodContainerStatuses() {
+        List<PodContainerStatus> copy = new ArrayList<>(podContainerStatuses.size());
+        podContainerStatuses.values().forEach(e -> copy.add(e.copy()));
+        return copy;
+    }
+
     public List<PodContainerStatus> getPodContainerStatuses(String projectId, String env) {
         return getCopyPodContainerStatuses().stream().filter(el -> Objects.equals(el.getProjectId(), projectId) && Objects.equals(el.getEnv(), env)).toList();
     }
@@ -253,20 +246,20 @@ public class KaravanCache {
         return getPodContainerStatus(GroupedKey.create(projectId, env, containerName));
     }
 
-    public PodContainerStatus getPodContainerStatus(String containerName, String env) {
-        return getPodContainerStatuses(env).stream().filter(el -> Objects.equals(el.getContainerName(), containerName)).findFirst().orElse(null);
-    }
-
     public PodContainerStatus getPodContainerStatus(String key) {
         return podContainerStatuses.get(key);
     }
 
-    public PodContainerStatus getDevModePodContainerStatus(String projectId, String env) {
-        return podContainerStatuses.get(GroupedKey.create(projectId, env, projectId));
+    public PodContainerStatus getPodContainerStatus(String containerName, String env) {
+        return getPodContainerStatuses(env).stream().filter(el -> Objects.equals(el.getContainerName(), containerName)).findFirst().orElse(null);
     }
 
     public List<PodContainerStatus> getPodContainerStatuses(String env) {
         return getCopyPodContainerStatuses().stream().filter(el -> Objects.equals(el.getEnv(), env)).toList();
+    }
+
+    public PodContainerStatus getDevModePodContainerStatus(String projectId, String env) {
+        return podContainerStatuses.get(GroupedKey.create(projectId, env, projectId));
     }
 
     public List<PodContainerStatus> getAllContainerStatuses() {
@@ -303,6 +296,12 @@ public class KaravanCache {
             var values = cs.getStatuses();
             cs.setStatuses(values.stream().filter(v -> Objects.equals(v.getName(), name)).toList());
         }).toList();
+    }
+
+    public List<CamelStatus> getCopyCamelStatuses() {
+        List<CamelStatus> copy = new ArrayList<>(camelStatuses.size());
+        camelStatuses.values().forEach(e -> copy.add(e.copy()));
+        return copy;
     }
 
     public List<CamelStatus> getCamelAllStatuses() {

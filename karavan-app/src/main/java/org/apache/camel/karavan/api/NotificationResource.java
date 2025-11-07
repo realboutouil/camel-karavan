@@ -29,22 +29,21 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.sse.OutboundSseEvent;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.service.NotificationService;
 import org.jboss.resteasy.reactive.RestStreamElementType;
 
 import static org.apache.camel.karavan.listener.NotificationListener.*;
 
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 @Path("/ui/notification")
 public class NotificationResource {
 
     private static final String SERVICE_NAME_SYSTEM = "NOTIFICATION_SYSTEM";
     private static final String SERVICE_NAME_USER = "NOTIFICATION_USER";
 
-    @Inject
-    EventBus eventBus;
-
-    @Inject
-    NotificationService notificationService;
+    private final EventBus eventBus;
+    private final NotificationService notificationService;
 
     @GET
     @Path("/system/{username}")

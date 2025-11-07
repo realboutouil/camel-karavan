@@ -38,9 +38,9 @@ export function ComponentsTab(props: Props) {
 
     const {components} = props;
     return (
-        <PageSection variant={props.dark ? PageSectionVariants.darker : PageSectionVariants.light} padding={{ default: 'noPadding' }} className="kamelet-section">
+        <PageSection variant={PageSectionVariants.default} padding={{ default: 'noPadding' }} className="kamelet-section">
             {isModalOpen && <ComponentModal/>}
-            <PageSection isFilled className="kamelets-page" variant={props.dark ? PageSectionVariants.darker : PageSectionVariants.light}>
+            <PageSection isFilled className="kamelets-page" variant={PageSectionVariants.default}>
                 <Gallery hasGutter>
                     {components.map(c => (
                         <ComponentCard key={c.component.name} component={c} onChange={props.onChange}  />

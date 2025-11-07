@@ -17,10 +17,26 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Represents a status value for a specific Camel component or feature")
 public class CamelStatusValue {
 
-    public enum Name {
+    @Schema(description = "The name of the component or feature", example = "route")
+    private Name name;
+    @Schema(description = "The current status value of the component", example = "running")
+    private String status;
 
+    @Schema(description = "The type of Camel component or feature being monitored")
+    public enum Name {
         context,
         inflight,
         memory,
@@ -30,32 +46,5 @@ public class CamelStatusValue {
         jvm,
         source,
         debug
-    }
-
-    Name name;
-    String status;
-
-    public CamelStatusValue() {
-    }
-
-    public CamelStatusValue(Name name, String status) {
-        this.name = name;
-        this.status = status;
-    }
-
-    public Name getName() {
-        return name;
-    }
-
-    public void setName(Name name) {
-        this.name = name;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
     }
 }

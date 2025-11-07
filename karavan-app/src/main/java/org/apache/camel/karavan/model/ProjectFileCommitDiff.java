@@ -17,36 +17,28 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Represents the changes made to a file in a Git commit")
 public class ProjectFileCommitDiff {
+
+    @Schema(description = "Type of change (ADD, MODIFY, DELETE, RENAME, COPY)", example = "MODIFY")
     private String changeType;
+
+    @Schema(description = "New file path after the change", example = "src/main/routes/order-route.yaml")
     private String newPath;
+
+    @Schema(description = "Original file path before the change", example = "src/main/routes/order-route-old.yaml")
     private String oldPath;
+
+    @Schema(description = "Unified diff format showing the changes", example = "@@ -1,3 +1,4 @@\n- route:\n    from:\n      uri: timer:tick\n+     parameters:\n+       period: 5000")
     private String diff;
-
-
-    public ProjectFileCommitDiff() {
-    }
-
-    public ProjectFileCommitDiff(String changeType, String newPath, String oldPath, String diff) {
-        this.changeType = changeType;
-        this.newPath = newPath;
-        this.oldPath = oldPath;
-        this.diff = diff;
-    }
-
-    public String getChangeType() {
-        return changeType;
-    }
-
-    public String getNewPath() {
-        return newPath;
-    }
-
-    public String getOldPath() {
-        return oldPath;
-    }
-
-    public String getDiff() {
-        return diff;
-    }
 }

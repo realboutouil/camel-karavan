@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.14.0
+## 4.14.2
 0. Camel 4.10.2
 1. Kamelets 4.10.2
 3. Jkube 1.18.1
