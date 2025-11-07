@@ -1,0 +1,136 @@
+name: karavan
+
+services:
+
+  karavan:
+    container_name: karavan
+    image: ghcr.io/apache/camel-karavan:4.14.2
+    ports:
+      - "8080:8080"
+    environment:
+      - KARAVAN_GIT_REPOSITORY=http://forgejo:3000/karavan/karavan.git
+      - KARAVAN_GIT_USERNAME=karavan
+      - KARAVAN_GIT_PASSWORD=karavan
+      - KARAVAN_GIT_BRANCH=main
+      - KARAVAN_CONTAINER_IMAGE_REGISTRY=registry:5000
+      - KARAVAN_CONTAINER_IMAGE_REGISTRY_USERNAME=
+      - KARAVAN_CONTAINER_IMAGE_REGISTRY_PASSWORD=
+      - KARAVAN_CONTAINER_IMAGE_GROUP=karavan
+      - KARAVAN_DOCKER_NETWORK=karavan
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    labels:
+      - "org.apache.camel.karavan/type=internal"
+    depends_on:
+      forgejo-init:
+        condition: service_completed_successfully
+    restart: on-failure:5
+    networks:
+      - karavan
+
+  forgejo:
+    container_name: forgejo
+    image: codeberg.org/forgejo/forgejo:9
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      - FORGEJO__server__OFFLINE_MODE=true
+      - FORGEJO__server__ROOT_URL=http://localhost:3000/
+      - FORGEJO__server__DOMAIN=localhost
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__admin__DISABLE_REGULAR_ORG_CREATION=false
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    labels:
+      - "org.apache.camel.karavan/type=internal"
+    networks:
+      - karavan
+
+  forgejo-init:
+    container_name: forgejo-init
+    image: codeberg.org/forgejo/forgejo:9
+    restart: "no"
+    user: "1000:1000"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO_WORK_DIR=/data/forgejo
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "Waiting for Forgejo to be ready..."
+        until curl -sf http://forgejo:3000/api/healthz > /dev/null 2>&1; do
+          sleep 2
+        done
+        echo "Forgejo is ready!"
+        
+        # Create admin user
+        if ! forgejo admin user list --admin | grep -q "karavan"; then
+          echo "Creating admin user 'karavan'..."
+          forgejo admin user create \
+            --admin \
+            --username karavan \
+            --password karavan \
+            --email karavan@localhost \
+            --must-change-password=false
+        else
+          echo "User 'karavan' already exists"
+        fi
+        
+        # Wait a bit for user to be fully created
+        sleep 3
+        
+        # Create repository via API
+        if ! curl -sf http://forgejo:3000/api/v1/repos/karavan/karavan > /dev/null 2>&1; then
+          echo "Creating repository 'karavan/karavan'..."
+          curl -X POST http://forgejo:3000/api/v1/user/repos \
+            -u karavan:karavan \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "karavan",
+              "description": "Karavan integration repository",
+              "private": false,
+              "auto_init": true,
+              "default_branch": "main"
+            }' || echo "Repository might already exist"
+        else
+          echo "Repository 'karavan/karavan' already exists"
+        fi
+        
+        echo "Forgejo setup completed!"
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    networks:
+      - karavan
+    volumes:
+      - ./data:/data
+
+  registry:
+    container_name: registry
+    image: registry:3
+    restart: always
+    ports:
+      - "5555:5000"
+    labels:
+      - "org.apache.camel.karavan/type=internal"
+    networks:
+      - karavan
+
+networks:
+  karavan:
+    name: karavan
+    external: true

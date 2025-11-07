@@ -1,0 +1,274 @@
+# Apache Camel Karavan - Development Makefile
+# ============================================
+
+.PHONY: help all clean install build test dev docker-up docker-down
+
+# Default target
+.DEFAULT_GOAL := help
+
+# Colors for output
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
+
+# Variables
+MAVEN := mvn
+NPM := npm
+DOCKER_COMPOSE := docker-compose
+GENERATOR_CLASS := org.apache.camel.karavan.generator.KaravanGenerator
+
+##@ General
+
+help: ## Display this help message
+	@echo "$(BLUE)Apache Camel Karavan - Development Commands$(NC)"
+	@echo ""
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make $(CYAN)<target>$(NC)\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  $(CYAN)%-25s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+all: clean install generate build ## Clean, install dependencies, generate code, and build all projects
+
+##@ Code Generation
+
+generate: ## Generate Camel Models and API from Camel sources
+	@echo "$(GREEN)Generating Camel Models and API...$(NC)"
+	$(MAVEN) clean compile exec:java -Dexec.mainClass="$(GENERATOR_CLASS)" -f karavan-generator
+
+generate-debug: ## Generate with Maven debug output
+	@echo "$(GREEN)Generating Camel Models and API (debug mode)...$(NC)"
+	$(MAVEN) clean compile exec:java -Dexec.mainClass="$(GENERATOR_CLASS)" -f karavan-generator -X
+
+##@ Dependencies
+
+install: install-core install-designer install-space install-vscode install-app-webui ## Install dependencies for all npm projects
+
+install-core: ## Install karavan-core dependencies
+	@echo "$(GREEN)Installing karavan-core dependencies...$(NC)"
+	cd karavan-core && $(NPM) install
+
+install-designer: ## Install karavan-designer dependencies
+	@echo "$(GREEN)Installing karavan-designer dependencies...$(NC)"
+	cd karavan-designer && $(NPM) install
+
+install-space: ## Install karavan-space dependencies
+	@echo "$(GREEN)Installing karavan-space dependencies...$(NC)"
+	cd karavan-space && $(NPM) install
+
+install-vscode: ## Install karavan-vscode dependencies
+	@echo "$(GREEN)Installing karavan-vscode dependencies...$(NC)"
+	cd karavan-vscode && $(NPM) install
+
+install-app-webui: ## Install karavan-app webui dependencies
+	@echo "$(GREEN)Installing karavan-app webui dependencies...$(NC)"
+	cd karavan-app/src/main/webui && $(NPM) install
+
+##@ Build
+
+build: build-core build-app build-vscode ## Build all projects
+
+build-core: ## Build karavan-core library
+	@echo "$(GREEN)Building karavan-core...$(NC)"
+	cd karavan-core && $(NPM) run build
+
+build-designer: ## Build karavan-designer
+	@echo "$(GREEN)Building karavan-designer...$(NC)"
+	cd karavan-designer && $(NPM) run build
+
+build-space: ## Build karavan-space
+	@echo "$(GREEN)Building karavan-space...$(NC)"
+	cd karavan-space && $(NPM) run build
+
+build-app: ## Build karavan-app (Quarkus application)
+	@echo "$(GREEN)Building karavan-app...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=public
+
+build-app-fast: ## Build karavan-app (fast mode, skip tests)
+	@echo "$(GREEN)Building karavan-app (fast mode)...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=public -DskipTests
+
+build-vscode: ## Build karavan-vscode extension
+	@echo "$(GREEN)Building karavan-vscode extension...$(NC)"
+	cd karavan-vscode && $(NPM) update && $(NPM) install && npx @vscode/vsce package --no-dependencies
+
+build-generator: ## Build karavan-generator
+	@echo "$(GREEN)Building karavan-generator...$(NC)"
+	$(MAVEN) clean package -f karavan-generator
+
+##@ Development
+
+dev-setup: ## Setup local Docker infrastructure (Gitea, Registry)
+	@echo "$(GREEN)Setting up local Docker infrastructure...$(NC)"
+	@echo "$(YELLOW)Creating Docker network 'karavan'...$(NC)"
+	-docker network create karavan
+	@echo "$(YELLOW)Starting Docker services (Gitea, Registry)...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f docker-compose-local.yaml up -d
+	@echo "$(GREEN)Local infrastructure is ready!$(NC)"
+	@echo "$(BLUE)Gitea:    http://localhost:3000 (admin/karavankaravan)$(NC)"
+	@echo "$(BLUE)Registry: http://localhost:5000$(NC)"
+	@echo ""
+	@echo "$(YELLOW)IMPORTANT: Add to /etc/hosts:$(NC)"
+	@echo "127.0.0.1   gitea"
+	@echo "127.0.0.1   registry"
+
+dev-app: ## Run karavan-app in Quarkus dev mode (local profile with Docker infrastructure)
+	@echo "$(GREEN)Starting karavan-app in dev mode (Docker infrastructure)...$(NC)"
+	@echo "$(YELLOW)Using profile: local,public$(NC)"
+	$(MAVEN) clean compile quarkus:dev -f karavan-app -Dquarkus.profile=local,public
+
+dev-core: ## Run karavan-core in dev mode
+	@echo "$(GREEN)Starting karavan-core in dev mode...$(NC)"
+	cd karavan-core && $(NPM) run dev
+
+dev-designer: ## Run karavan-designer in dev mode
+	@echo "$(GREEN)Starting karavan-designer in dev mode...$(NC)"
+	cd karavan-designer && $(NPM) run dev
+
+dev-space: ## Run karavan-space in dev mode
+	@echo "$(GREEN)Starting karavan-space in dev mode...$(NC)"
+	cd karavan-space && $(NPM) run dev
+
+##@ Testing
+
+test: test-core ## Run all tests
+
+test-core: ## Run karavan-core tests
+	@echo "$(GREEN)Running karavan-core tests...$(NC)"
+	cd karavan-core && $(NPM) test
+
+test-app: ## Run karavan-app tests
+	@echo "$(GREEN)Running karavan-app tests...$(NC)"
+	$(MAVEN) test -f karavan-app
+
+test-generator: ## Run karavan-generator tests
+	@echo "$(GREEN)Running karavan-generator tests...$(NC)"
+	$(MAVEN) test -f karavan-generator
+
+##@ Docker
+
+docker-build: ## Build Docker images
+	@echo "$(GREEN)Building Docker images...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=public -Dquarkus.container-image.build=true
+
+docker-up: ## Start Docker services (karavan-docker)
+	@echo "$(GREEN)Starting Docker services...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) up -d
+
+docker-down: ## Stop Docker services
+	@echo "$(GREEN)Stopping Docker services...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) down
+
+docker-logs: ## Show Docker logs
+	@echo "$(GREEN)Showing Docker logs...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) logs -f
+
+docker-restart: docker-down docker-up ## Restart Docker services
+
+docker-local-up: ## Start Docker services with local config
+	@echo "$(GREEN)Starting Docker services (local config)...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f docker-compose-local.yaml up -d
+
+docker-local-down: ## Stop Docker services (local config)
+	@echo "$(GREEN)Stopping Docker services (local config)...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f docker-compose-local.yaml down
+
+##@ Versioning
+
+version: ## Update version (usage: make version VERSION=4.14.2)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "$(RED)Error: VERSION is required. Usage: make version VERSION=4.14.2$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Updating version to $(VERSION)...$(NC)"
+	./change_version.sh $(VERSION)
+
+##@ Dependencies Update
+
+deps-check: ## Check for outdated npm dependencies
+	@echo "$(GREEN)Checking karavan-core dependencies...$(NC)"
+	cd karavan-core && $(NPM) outdated || true
+	@echo "$(GREEN)Checking karavan-designer dependencies...$(NC)"
+	cd karavan-designer && $(NPM) outdated || true
+	@echo "$(GREEN)Checking karavan-space dependencies...$(NC)"
+	cd karavan-space && $(NPM) outdated || true
+	@echo "$(GREEN)Checking karavan-vscode dependencies...$(NC)"
+	cd karavan-vscode && $(NPM) outdated || true
+	@echo "$(GREEN)Checking karavan-app webui dependencies...$(NC)"
+	cd karavan-app/src/main/webui && $(NPM) outdated || true
+
+deps-update: ## Update npm dependencies with ncu
+	@echo "$(GREEN)Updating dependencies...$(NC)"
+	cd karavan-core && ncu -u && $(NPM) install
+	cd karavan-designer && ncu -u && $(NPM) install
+	cd karavan-space && ncu -u && $(NPM) install
+	cd karavan-vscode && ncu -u && $(NPM) install
+	cd karavan-app/src/main/webui && ncu -u && $(NPM) install
+
+##@ Linting & Formatting
+
+lint: ## Run ESLint on all projects
+	@echo "$(GREEN)Linting karavan-designer...$(NC)"
+	cd karavan-designer && $(NPM) run lint || true
+	@echo "$(GREEN)Linting karavan-space...$(NC)"
+	cd karavan-space && $(NPM) run lint || true
+	@echo "$(GREEN)Linting karavan-vscode...$(NC)"
+	cd karavan-vscode && $(NPM) run lint || true
+
+lint-fix: ## Fix ESLint issues automatically
+	@echo "$(GREEN)Fixing lint issues in karavan-designer...$(NC)"
+	cd karavan-designer && $(NPM) run lint:fix || true
+	@echo "$(GREEN)Fixing lint issues in karavan-space...$(NC)"
+	cd karavan-space && $(NPM) run lint:fix || true
+	@echo "$(GREEN)Fixing lint issues in karavan-vscode...$(NC)"
+	cd karavan-vscode && $(NPM) run lint:fix || true
+
+##@ Cleaning
+
+clean: clean-core clean-designer clean-space clean-vscode clean-app clean-generator ## Clean all build artifacts
+
+clean-core: ## Clean karavan-core build artifacts
+	@echo "$(YELLOW)Cleaning karavan-core...$(NC)"
+	cd karavan-core && rm -rf lib node_modules package-lock.json
+
+clean-designer: ## Clean karavan-designer build artifacts
+	@echo "$(YELLOW)Cleaning karavan-designer...$(NC)"
+	cd karavan-designer && rm -rf dist build node_modules package-lock.json
+
+clean-space: ## Clean karavan-space build artifacts
+	@echo "$(YELLOW)Cleaning karavan-space...$(NC)"
+	cd karavan-space && rm -rf dist build node_modules package-lock.json
+
+clean-vscode: ## Clean karavan-vscode build artifacts
+	@echo "$(YELLOW)Cleaning karavan-vscode...$(NC)"
+	cd karavan-vscode && rm -rf out dist *.vsix node_modules package-lock.json
+
+clean-app: ## Clean karavan-app build artifacts
+	@echo "$(YELLOW)Cleaning karavan-app...$(NC)"
+	$(MAVEN) clean -f karavan-app
+	cd karavan-app/src/main/webui && rm -rf node_modules package-lock.json
+
+clean-generator: ## Clean karavan-generator build artifacts
+	@echo "$(YELLOW)Cleaning karavan-generator...$(NC)"
+	$(MAVEN) clean -f karavan-generator
+
+clean-all: clean ## Deep clean (includes Docker volumes)
+	@echo "$(RED)Performing deep clean...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) down -v || true
+
+##@ Quick Start
+
+quickstart: generate install-core build-app ## Quick start: generate, install core, and build app
+
+dev-quickstart: generate install ## Quick dev setup: generate code and install all dependencies
+
+##@ CI/CD
+
+ci-build: ## CI build pipeline
+	@echo "$(GREEN)Running CI build pipeline...$(NC)"
+	$(MAVEN) clean compile exec:java -Dexec.mainClass="$(GENERATOR_CLASS)" -f karavan-generator
+	cd karavan-core && $(NPM) ci
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=public -DskipTests
+
+ci-test: ## CI test pipeline
+	@echo "$(GREEN)Running CI test pipeline...$(NC)"
+	cd karavan-core && $(NPM) test
+	$(MAVEN) test -f karavan-app
