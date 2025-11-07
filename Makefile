@@ -143,11 +143,67 @@ test-generator: ## Run karavan-generator tests
 	@echo "$(GREEN)Running karavan-generator tests...$(NC)"
 	$(MAVEN) test -f karavan-generator
 
-##@ Docker
+##@ Docker / Container Images
 
-docker-build: ## Build Docker images
-	@echo "$(GREEN)Building Docker images...$(NC)"
-	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=public -Dquarkus.container-image.build=true
+docker-build: docker-build-app docker-build-app-oidc docker-build-devmode ## Build all container images (app, app-oidc, devmode)
+
+docker-build-app: ## Build karavan-app container image with Jib
+	@echo "$(GREEN)Building karavan-app container image with Jib...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=public -DskipTests \
+		-Dquarkus.container-image.build=true \
+		-Dquarkus.container-image.group=apache \
+		-Dquarkus.container-image.name=camel-karavan \
+		-Dquarkus.container-image.tag=4.14.2
+
+docker-build-app-oidc: ## Build karavan-app OIDC container image with Jib
+	@echo "$(GREEN)Building karavan-app OIDC container image with Jib...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=oidc -DskipTests \
+		-Dquarkus.container-image.build=true \
+		-Dquarkus.container-image.group=apache \
+		-Dquarkus.container-image.name=camel-karavan \
+		-Dquarkus.container-image.tag=4.14.2-oidc
+
+docker-build-devmode: ## Build karavan-devmode container image with Docker
+	@echo "$(GREEN)Building karavan-devmode container image with Docker...$(NC)"
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		-t apache/camel-karavan-devmode:4.14.2 \
+		-f karavan-devmode/Dockerfile \
+		karavan-devmode
+
+docker-build-native: ## Build native container images with Jib
+	@echo "$(GREEN)Building native container images with Jib...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Pnative -Dquarkus.profile=public -DskipTests \
+		-Dquarkus.container-image.build=true
+
+docker-push: docker-push-app docker-push-app-oidc docker-push-devmode ## Build and push all container images
+
+docker-push-app: ## Build and push karavan-app container image
+	@echo "$(GREEN)Building and pushing karavan-app container image...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=public -DskipTests \
+		-Dquarkus.container-image.build=true \
+		-Dquarkus.container-image.push=true \
+		-Dquarkus.container-image.registry=ghcr.io \
+		-Dquarkus.container-image.group=apache \
+		-Dquarkus.container-image.name=camel-karavan \
+		-Dquarkus.container-image.tag=4.14.2
+
+docker-push-app-oidc: ## Build and push karavan-app OIDC container image
+	@echo "$(GREEN)Building and pushing karavan-app OIDC container image...$(NC)"
+	$(MAVEN) clean package -f karavan-app -Dquarkus.profile=oidc -DskipTests \
+		-Dquarkus.container-image.build=true \
+		-Dquarkus.container-image.push=true \
+		-Dquarkus.container-image.registry=ghcr.io \
+		-Dquarkus.container-image.group=apache \
+		-Dquarkus.container-image.name=camel-karavan \
+		-Dquarkus.container-image.tag=4.14.2-oidc
+
+docker-push-devmode: ## Build and push karavan-devmode container image
+	@echo "$(GREEN)Building and pushing karavan-devmode container image...$(NC)"
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		-t ghcr.io/apache/camel-karavan-devmode:4.14.2 \
+		--push \
+		-f karavan-devmode/Dockerfile \
+		karavan-devmode
 
 docker-up: ## Start Docker services (karavan-docker)
 	@echo "$(GREEN)Starting Docker services...$(NC)"

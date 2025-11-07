@@ -80,8 +80,12 @@ public class ProjectResource extends AbstractApiResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{project}")
-    public Project get(@PathParam("project") String project) throws Exception {
-        return karavanCache.getProject(project);
+    public Response get(@PathParam("project") String project) {
+        Project foundProject = karavanCache.getProject(project);
+        if (foundProject == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Project not found: " + project).build();
+        }
+        return Response.ok(foundProject).build();
     }
 
     @POST
@@ -127,9 +131,9 @@ public class ProjectResource extends AbstractApiResource {
             projectService.buildProject(project, tag);
             return Response.ok().entity(project).build();
         } catch (Exception e) {
-            log.error(e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
-            e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
+            String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+            log.error("Error building project: {}", errorMessage, e);
+            return Response.serverError().entity(errorMessage).build();
         }
     }
 
@@ -157,7 +161,7 @@ public class ProjectResource extends AbstractApiResource {
                     camelStatus.setStatuses(stats);
                     return camelStatus;
                 }).toList();
-        if (statuses != null && !statuses.isEmpty()) {
+        if (!statuses.isEmpty()) {
             return Response.ok(statuses).build();
         } else {
             return Response.noContent().build();
@@ -224,9 +228,9 @@ public class ProjectResource extends AbstractApiResource {
 
         @FormParam("overwriteExistingFiles")
         @PartType(MediaType.TEXT_PLAIN)
-        Boolean overwriteExistingFiles;
+        boolean overwriteExistingFiles;
 
-        public ProjectArchiveUploadMultiPart(InputStream file, Boolean overwriteExistingFiles) {
+        public ProjectArchiveUploadMultiPart(InputStream file, boolean overwriteExistingFiles) {
             this.file = file;
             this.overwriteExistingFiles = overwriteExistingFiles;
         }
@@ -242,11 +246,11 @@ public class ProjectResource extends AbstractApiResource {
             this.file = file;
         }
 
-        public Boolean isOverwriteExistingFiles() {
+        public boolean isOverwriteExistingFiles() {
             return overwriteExistingFiles;
         }
 
-        public void setOverwriteExistingFiles(Boolean overwriteExistingFiles) {
+        public void setOverwriteExistingFiles(boolean overwriteExistingFiles) {
             this.overwriteExistingFiles = overwriteExistingFiles;
         }
 

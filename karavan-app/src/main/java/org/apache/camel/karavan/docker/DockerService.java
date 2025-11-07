@@ -65,8 +65,8 @@ public class DockerService {
     private final DockerEventHandler dockerEventHandler;
     private final CodeService codeService;
     private final Vertx vertx;
-    private DockerClient dockerClient;
-    private DockerClient dockerClientConnectedToRegistry;
+    private volatile DockerClient dockerClient;
+    private volatile DockerClient dockerClientConnectedToRegistry;
 
     void onStart(@Observes StartupEvent ev) {
         if (!ConfigService.inKubernetes()) {
@@ -78,9 +78,13 @@ public class DockerService {
 
     public DockerClient getDockerClient() {
         if (dockerClient == null) {
-            DockerClientConfig config = getDockerClientConfig(true);
-            DockerHttpClient httpClient = getDockerHttpClient(config);
-            dockerClient = DockerClientImpl.getInstance(config, httpClient);
+            synchronized (this) {
+                if (dockerClient == null) {
+                    DockerClientConfig config = getDockerClientConfig(true);
+                    DockerHttpClient httpClient = getDockerHttpClient(config);
+                    dockerClient = DockerClientImpl.getInstance(config, httpClient);
+                }
+            }
         }
         return dockerClient;
     }
@@ -219,7 +223,7 @@ public class DockerService {
                 }
                 if (dockerCommand != null) {
                     createContainerCmd.withCmd("/bin/sh", "-c", dockerCommand);
-                    System.out.println(dockerCommand);
+                    log.debug("Docker command: {}", dockerCommand);
                 }
                 if (Objects.equals(labels.get(LABEL_PROJECT_ID), ContainerType.build.name())) {
                     mounts.add(new Mount().withType(MountType.BIND).withSource("/var/run/docker.sock").withTarget("/var/run/docker.sock"));
@@ -295,8 +299,7 @@ public class DockerService {
                     .withTarInputStream(new ByteArrayInputStream(byteArrayOutputStream.toByteArray()))
                     .withRemotePath(containerPath).exec();
         } catch (Exception e) {
-            log.error(e.getMessage());
-            e.printStackTrace();
+            log.error("Error copying exec file to container: {}", e.getMessage(), e);
         }
     }
 
@@ -420,9 +423,13 @@ public class DockerService {
 
     public DockerClient getDockerClientNotConnectedToRegistry() {
         if (dockerClientConnectedToRegistry == null) {
-            DockerClientConfig config = getDockerClientConfig(false);
-            DockerHttpClient httpClient = getDockerHttpClient(config);
-            dockerClientConnectedToRegistry = DockerClientImpl.getInstance(config, httpClient);
+            synchronized (this) {
+                if (dockerClientConnectedToRegistry == null) {
+                    DockerClientConfig config = getDockerClientConfig(false);
+                    DockerHttpClient httpClient = getDockerHttpClient(config);
+                    dockerClientConnectedToRegistry = DockerClientImpl.getInstance(config, httpClient);
+                }
+            }
         }
         return dockerClientConnectedToRegistry;
     }
