@@ -183,8 +183,7 @@ public class ProjectService {
 
     public void importProjectFromArchiveFile(InputStream projectArchiveInputStream, boolean overwriteExistingFiles) throws Exception {
         log.info("Import project(s) from archive file");
-        try {
-            ZipArchiveInputStream zipArchiveInputStream = new ZipArchiveInputStream(projectArchiveInputStream);
+        try (ZipArchiveInputStream zipArchiveInputStream = new ZipArchiveInputStream(projectArchiveInputStream)) {
             ZipArchiveEntry zipArchiveEntry = zipArchiveInputStream.getNextEntry();
             Map<String, String> projects = new HashMap<>();
             Map<String, List<ProjectFile>> files = new HashMap<>();
@@ -228,7 +227,6 @@ public class ProjectService {
                     zipArchiveEntry = zipArchiveInputStream.getNextEntry();
                 }
             }
-            zipArchiveInputStream.close();
 
             for (Map.Entry<String, String> entry : projects.entrySet()) {
                 Project project = new Project(entry.getKey(), entry.getValue());

@@ -46,18 +46,18 @@ jobs:
         working-directory: ./karavan/karavan-core
         run: npm ci
 
-      - name: Create Multi Platfrom Builder
-        run: docker buildx create --use --platform=linux/arm64,linux/amd64 --name multi-platform-builder
-
-      - name: Build application
+      - name: Build and Push application with Jib
         working-directory: ./karavan/karavan-app
         run: |
           mvn package -DskipTests \
           -Dquarkus.quinoa.package-manager-install=false \
           -Dquarkus.container-image.build=true \
           -Dquarkus.container-image.push=${{ github.event_name != 'pull_request' }} \
-          -Dquarkus.docker.buildx.platform=linux/amd64,linux/arm64 \
-          -Dquarkus.container-image.image=${{ env.REGISTRY }}/${GITHUB_REPOSITORY}:${{ env.TAG }} \
+          -Dquarkus.jib.platforms=linux/amd64,linux/arm64 \
+          -Dquarkus.container-image.registry=${{ env.REGISTRY }} \
+          -Dquarkus.container-image.name=${GITHUB_REPOSITORY} \
+          -Dquarkus.container-image.tag=${{ env.TAG }} \
+          -Dquarkus.container-image.group= \
           -Dquarkus.container-image.username=${{ github.actor }} \
           -Dquarkus.container-image.password=${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.ref == 'refs/heads/main' }}

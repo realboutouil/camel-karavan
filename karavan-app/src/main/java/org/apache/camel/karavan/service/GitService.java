@@ -64,9 +64,8 @@ public class GitService {
     private final KaravanProperties properties;
     private final Vertx vertx;
 
-    SshSessionFactory sshSessionFactory;
-
-    private Git gitForImport;
+    private volatile SshSessionFactory sshSessionFactory;
+    private volatile Git gitForImport;
 
     public Tuple2<String, String> getSShFiles() {
         return Tuple2.of(properties.privateKeyPath().orElse(null), properties.knownHostsPath().orElse(null));
@@ -83,15 +82,6 @@ public class GitService {
         String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
         log.info("Temp folder created " + folder);
         Git git = getGit(true, folder);
-//        try {
-//            git = clone(folder, gitConfig.getUri(), gitConfig.getBranch());
-//            checkout(git, false, null, null, gitConfig.getBranch());
-//        } catch (RefNotFoundException | InvalidRemoteException | TransportException e) {
-//            log.error("New repository");
-//            git = init(folder, gitConfig.getUri(), gitConfig.getBranch());
-//        } catch (Exception e) {
-//            log.error("Error", e);
-//        }
         writeProjectToFolder(folder, project, files);
         addDeletedFilesToIndex(git, folder, project, files);
         return commitAddedAndPush(git, gitConfig.getBranch(), message, authorName, authorEmail, fileNames, project.getProjectId());
@@ -107,10 +97,14 @@ public class GitService {
 
     public Git getGitForImport() {
         if (gitForImport == null) {
-            try {
-                gitForImport = getGit(true, vertx.fileSystem().createTempDirectoryBlocking("import"));
-            } catch (Exception e) {
-                log.error("Error", e);
+            synchronized (this) {
+                if (gitForImport == null) {
+                    try {
+                        gitForImport = getGit(true, vertx.fileSystem().createTempDirectoryBlocking("import"));
+                    } catch (Exception e) {
+                        log.error("Error initializing Git for import", e);
+                    }
+                }
             }
         }
         return gitForImport;
@@ -215,7 +209,8 @@ public class GitService {
         for (RevCommit commit : log) {
             return Tuple2.of(commit.getId().getName(), commit.getCommitTime());
         }
-        return null;
+        // Return default values if no commit found
+        return Tuple2.of("", 0);
     }
 
     public GitConfig getGitConfig() {
@@ -306,23 +301,35 @@ public class GitService {
 
     private SshSessionFactory getSshSessionFactory() {
         if (sshSessionFactory == null) {
-            sshSessionFactory = new JschConfigSessionFactory() {
-                protected void configureJSch(JSch jsch) {
-                    try {
-                        jsch.addIdentity(properties.privateKeyPath().get());
-                        jsch.setKnownHosts(properties.knownHostsPath().get());
-                    } catch (JSchException e) {
-                        log.info("Error configureJSch: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
-                    }
+            synchronized (this) {
+                if (sshSessionFactory == null) {
+                    sshSessionFactory = new JschConfigSessionFactory() {
+                        protected void configureJSch(JSch jsch) {
+                            try {
+                                if (properties.privateKeyPath().isPresent()) {
+                                    jsch.addIdentity(properties.privateKeyPath().get());
+                                }
+                                if (properties.knownHostsPath().isPresent()) {
+                                    jsch.setKnownHosts(properties.knownHostsPath().get());
+                                }
+                            } catch (JSchException e) {
+                                log.error("Error configuring JSch: {}", e.getMessage(), e);
+                            }
+                        }
+                    };
                 }
-            };
+            }
         }
         return sshSessionFactory;
     }
 
     public GitRepo readProjectFromRepository(String projectId) throws GitAPIException, IOException, URISyntaxException {
         Git git = getGit(true, vertx.fileSystem().createTempDirectoryBlocking(UUID.randomUUID().toString()));
-        return readProjectsFromRepository(git, projectId).get(0);
+        List<GitRepo> repos = readProjectsFromRepository(git, projectId);
+        if (repos.isEmpty()) {
+            throw new IllegalStateException("Project not found in repository: " + projectId);
+        }
+        return repos.get(0);
     }
 
     private void writeProjectToFolder(String folder, Project project, List<ProjectFile> files) throws IOException {
@@ -408,17 +415,15 @@ public class GitService {
     }
 
     private void fetch(Git git) throws GitAPIException {
-        // fetch:
         FetchCommand command = git.fetch();
         setCredentials(command);
-        FetchResult result = command.call();
+        command.call();
     }
 
     private void pull(Git git) throws GitAPIException {
-        // pull:
         PullCommand command = git.pull();
         setCredentials(command);
-        PullResult result = command.call();
+        command.call();
     }
 
     public Set<String> getChangedProjects(RevCommit commit) {
