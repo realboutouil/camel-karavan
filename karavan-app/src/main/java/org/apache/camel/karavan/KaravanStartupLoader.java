@@ -23,19 +23,20 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.model.GitRepo;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.model.Project;
 import org.apache.camel.karavan.model.ProjectFile;
 import org.apache.camel.karavan.service.CodeService;
 import org.apache.camel.karavan.service.ConfigService;
 import org.apache.camel.karavan.service.GitService;
 import org.apache.camel.karavan.service.ProjectService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Readiness;
-import org.jboss.logging.Logger;
 
 import java.time.Instant;
 import java.util.List;
@@ -45,35 +46,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.apache.camel.karavan.KaravanConstants.DEV;
 import static org.apache.camel.karavan.KaravanEvents.NOTIFICATION_PROJECTS_STARTED;
 
+@Slf4j
 @Default
 @Readiness
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class KaravanStartupLoader implements HealthCheck {
 
-    private static final Logger LOGGER = Logger.getLogger(KaravanStartupLoader.class.getName());
+    private final KaravanProperties properties;
+    private final ProjectService projectService;
+    private final KaravanCache karavanCache;
+    private final DockerService dockerService;
+    private final GitService gitService;
+    private final CodeService codeService;
+    private final EventBus eventBus;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
-
-    @Inject
-    ProjectService projectService;
-
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    DockerService dockerService;
-
-    @Inject
-    GitService gitService;
-
-    @Inject
-    CodeService codeService;
-
-    @Inject
-    EventBus eventBus;
-
-    private AtomicBoolean ready = new AtomicBoolean(false);
+    private final AtomicBoolean ready = new AtomicBoolean(false);
 
     @Override
     public HealthCheckResponse call() {
@@ -85,25 +73,25 @@ public class KaravanStartupLoader implements HealthCheck {
     }
 
     void onStart(@Observes StartupEvent ev) throws Exception {
-        LOGGER.info("Starting " + ConfigService.getAppName() + " in " + environment + " env in " + (ConfigService.inKubernetes() ? "Kubernetes" : "Docker"));
-        if (!ConfigService.inKubernetes() && !dockerService.checkDocker()){
+        log.info("Starting " + properties.appName() + " in " + properties.environment() + " env in " + (ConfigService.inKubernetes() ? "Kubernetes" : "Docker"));
+        if (!ConfigService.inKubernetes() && !dockerService.checkDocker()) {
             Quarkus.asyncExit();
         } else {
-            LOGGER.info("Projects loading...");
+            log.info("Projects loading...");
             tryStart();
             eventBus.publish(NOTIFICATION_PROJECTS_STARTED, null);
-            LOGGER.info("Projects loaded");
+            log.info("Projects loaded");
         }
     }
 
     public void tryStart() throws Exception {
         boolean git = gitService.checkGit();
-        LOGGER.info("Starting Project service: git is " + (git ? "ready" : "not ready"));
+        log.info("Starting Project service: git is " + (git ? "ready" : "not ready"));
         if (gitService.checkGit()) {
             if (karavanCache.getProjects().isEmpty()) {
                 importAllProjects();
             }
-            if (Objects.equals(environment, DEV)) {
+            if (Objects.equals(properties.environment(), DEV)) {
                 addKameletsProject();
                 addTemplatesProject();
                 addConfigurationProject();
@@ -111,13 +99,13 @@ public class KaravanStartupLoader implements HealthCheck {
             }
             ready.set(true);
         } else {
-            LOGGER.info("Projects are not ready");
+            log.info("Projects are not ready");
             throw new Exception("Projects are not ready");
         }
     }
 
     private void importAllProjects() {
-        LOGGER.info("Import projects from git: " + gitService.getGitConfig().getUri());
+        log.info("Import projects from git: " + gitService.getGitConfig().getUri());
         try {
             List<GitRepo> repos = gitService.readProjectsToImport();
             repos.forEach(repo -> {
@@ -142,7 +130,7 @@ public class KaravanStartupLoader implements HealthCheck {
                 });
             });
         } catch (Exception e) {
-            LOGGER.error("Error during project import", e);
+            log.error("Error during project import", e);
         }
     }
 
@@ -150,12 +138,12 @@ public class KaravanStartupLoader implements HealthCheck {
         try {
             Project kamelets = karavanCache.getProject(Project.Type.kamelets.name());
             if (kamelets == null) {
-                LOGGER.info("Add custom kamelets project");
+                log.info("Add custom kamelets project");
                 kamelets = new Project(Project.Type.kamelets.name(), "Custom Kamelets", "", Instant.now().toEpochMilli(), Project.Type.kamelets);
                 karavanCache.saveProject(kamelets, true);
             }
         } catch (Exception e) {
-            LOGGER.error("Error during custom kamelets project creation", e);
+            log.error("Error during custom kamelets project creation", e);
         }
     }
 
@@ -163,7 +151,7 @@ public class KaravanStartupLoader implements HealthCheck {
         try {
             Project templates = karavanCache.getProject(Project.Type.templates.name());
             if (templates == null) {
-                LOGGER.info("Add templates project");
+                log.info("Add templates project");
                 templates = new Project(Project.Type.templates.name(), "Templates", "", Instant.now().toEpochMilli(), Project.Type.templates);
                 karavanCache.saveProject(templates, true);
 
@@ -175,14 +163,14 @@ public class KaravanStartupLoader implements HealthCheck {
                 codeService.getTemplates().forEach((name, value) -> {
                     ProjectFile f = karavanCache.getProjectFile(Project.Type.templates.name(), name);
                     if (f == null) {
-                        LOGGER.info("Add new template " + name);
+                        log.info("Add new template " + name);
                         ProjectFile file = new ProjectFile(name, value, Project.Type.templates.name(), Instant.now().toEpochMilli());
                         karavanCache.saveProjectFile(file, false, true);
                     }
                 });
             }
         } catch (Exception e) {
-            LOGGER.error("Error during templates project creation", e);
+            log.error("Error during templates project creation", e);
         }
     }
 
@@ -190,7 +178,7 @@ public class KaravanStartupLoader implements HealthCheck {
         try {
             Project configuration = karavanCache.getProject(Project.Type.configuration.name());
             if (configuration == null) {
-                LOGGER.info("Add configuration project");
+                log.info("Add configuration project");
                 configuration = new Project(Project.Type.configuration.name(), "Configuration", "", Instant.now().toEpochMilli(), Project.Type.configuration);
                 karavanCache.saveProject(configuration, true);
 
@@ -202,14 +190,14 @@ public class KaravanStartupLoader implements HealthCheck {
                 codeService.getConfigurationFiles().forEach((name, value) -> {
                     ProjectFile f = karavanCache.getProjectFile(Project.Type.configuration.name(), name);
                     if (f == null) {
-                        LOGGER.info("Add new configuration " + name);
+                        log.info("Add new configuration " + name);
                         ProjectFile file = new ProjectFile(name, value, Project.Type.configuration.name(), Instant.now().toEpochMilli());
                         karavanCache.saveProjectFile(file, false, true);
                     }
                 });
             }
         } catch (Exception e) {
-            LOGGER.error("Error during configuration project creation", e);
+            log.error("Error during configuration project creation", e);
         }
     }
 
@@ -217,7 +205,7 @@ public class KaravanStartupLoader implements HealthCheck {
         try {
             Project services = karavanCache.getProject(Project.Type.services.name());
             if (services == null) {
-                LOGGER.info("Add dev services project");
+                log.info("Add dev services project");
                 services = new Project(Project.Type.services.name(), "Dev services", "", Instant.now().toEpochMilli(), Project.Type.services);
                 karavanCache.saveProject(services, true);
 
@@ -229,14 +217,14 @@ public class KaravanStartupLoader implements HealthCheck {
                 codeService.getDevServicesFiles().forEach((name, value) -> {
                     ProjectFile f = karavanCache.getProjectFile(Project.Type.services.name(), name);
                     if (f == null) {
-                        LOGGER.info("Add new service " + name);
+                        log.info("Add new service " + name);
                         ProjectFile file = new ProjectFile(name, value, Project.Type.services.name(), Instant.now().toEpochMilli());
                         karavanCache.saveProjectFile(file, false, true);
                     }
                 });
             }
         } catch (Exception e) {
-            LOGGER.error("Error during services project creation", e);
+            log.error("Error during services project creation", e);
         }
     }
 }

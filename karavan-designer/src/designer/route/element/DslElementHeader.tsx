@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 import React, {CSSProperties, useEffect, useMemo} from 'react';
-import {Text, Tooltip,} from '@patternfly/react-core';
+import {Tooltip} from '@patternfly/react-core';
+import {Text} from '../../utils/PatternFlyCompat';
 import '../../karavan.css';
 import './DslElement.css';
 import {CamelElement} from "karavan-core/lib/model/IntegrationDefinition";

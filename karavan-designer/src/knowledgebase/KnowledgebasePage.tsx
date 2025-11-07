@@ -24,12 +24,11 @@ import {
     Switch,
     Tab,
     Tabs,
-    Text,
-    TextContent,
     TextInput,
     Toolbar,
     ToolbarContent
 } from "@patternfly/react-core";
+import {Text, TextContent} from "../designer/utils/PatternFlyCompat";
 import {MainToolbar} from "../designer/MainToolbar";
 import {KameletsTab} from "./kamelets/KameletsTab";
 import {EipTab} from "./eip/EipTab";
@@ -88,7 +87,7 @@ export const KnowledgebasePage = (props: Props) => {
         </Toolbar>
     }
 
-    let kameletList: KameletModel[] = KameletApi.getKamelets().filter(kamelet =>
+    let kameletList: KameletModel[] = KameletApi.getAllKamelets().filter(kamelet =>
         kamelet.spec.definition.title.toLowerCase().includes(filter.toLowerCase()));
     if (customOnly) kameletList = kameletList.filter(k => KameletApi.getCustomKameletNames().includes(k.metadata.name));
 

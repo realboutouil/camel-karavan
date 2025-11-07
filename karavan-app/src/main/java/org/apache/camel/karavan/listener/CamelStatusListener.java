@@ -24,16 +24,13 @@ import io.vertx.mutiny.ext.web.client.HttpResponse;
 import io.vertx.mutiny.ext.web.client.WebClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
-import org.apache.camel.karavan.KaravanConstants;
-import org.apache.camel.karavan.model.CamelStatus;
-import org.apache.camel.karavan.model.CamelStatusRequest;
-import org.apache.camel.karavan.model.CamelStatusValue;
-import org.apache.camel.karavan.model.PodContainerStatus;
+import org.apache.camel.karavan.config.KaravanProperties;
+import org.apache.camel.karavan.model.*;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
-import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,35 +39,25 @@ import java.util.concurrent.ExecutionException;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_COLLECT_CAMEL_STATUS;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class CamelStatusListener {
 
-    private static final Logger LOGGER = Logger.getLogger(CamelStatusListener.class.getName());
+    private final KaravanCache karavanCache;
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanProperties properties;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
-
-    @Inject
-    Vertx vertx;
+    private final Vertx vertx;
 
     WebClient webClient;
-
-    public WebClient getWebClient() {
-        if (webClient == null) {
-            webClient = WebClient.create(vertx);
-        }
-        return webClient;
-    }
 
     @ConsumeEvent(value = CMD_COLLECT_CAMEL_STATUS, blocking = true, ordered = true)
     public void collectCamelStatuses(JsonObject data) {
         try {
             CamelStatusRequest dms = data.getJsonObject("camelStatusRequest").mapTo(CamelStatusRequest.class);
             PodContainerStatus containerStatus = data.getJsonObject("containerStatus").mapTo(PodContainerStatus.class);
-            LOGGER.debug("Collect Camel Status for " + containerStatus.getContainerName());
+            log.debug("Collect Camel Status for " + containerStatus.getContainerName());
             String projectId = dms.getProjectId();
             String containerName = dms.getContainerName();
             List<CamelStatusValue> statuses = new ArrayList<>();
@@ -80,11 +67,23 @@ public class CamelStatusListener {
                     statuses.add(new CamelStatusValue(statusName, status));
                 }
             }
-            CamelStatus cs = new CamelStatus(projectId, containerName, statuses, environment);
+            CamelStatus cs = new CamelStatus(projectId, containerName, statuses, properties.environment());
             karavanCache.saveCamelStatus(cs);
         } catch (Exception ex) {
-//            LOGGER.warn("collectCamelStatuses " + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+//            log.warn("collectCamelStatuses " + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
         }
+    }
+
+    public String getCamelStatus(PodContainerStatus podContainerStatus, CamelStatusValue.Name statusName) throws Exception {
+        var name = statusName.name();
+        var path = "/q/dev/" + name + (Objects.equals(name, "trace") ? "?dump=true" : "");
+        String url = getContainerAddressForStatus(podContainerStatus) + path;
+        try {
+            return getResult(url, 500);
+        } catch (InterruptedException | ExecutionException ex) {
+//            log.warn("getCamelStatus " + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+        }
+        return null;
     }
 
     public String getContainerAddressForStatus(PodContainerStatus podContainerStatus) throws Exception {
@@ -101,18 +100,6 @@ public class CamelStatusListener {
         throw new Exception("No port configured for project " + podContainerStatus.getContainerName());
     }
 
-    public String getCamelStatus(PodContainerStatus podContainerStatus, CamelStatusValue.Name statusName) throws Exception {
-        var name = statusName.name();
-        var path = "/q/dev/" + name + (Objects.equals(name, "trace") ? "?dump=true" : "");
-        String url = getContainerAddressForStatus(podContainerStatus) + path;
-        try {
-            return getResult(url, 500);
-        } catch (InterruptedException | ExecutionException ex) {
-//            LOGGER.warn("getCamelStatus " + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
-        }
-        return null;
-    }
-
     @CircuitBreaker(requestVolumeThreshold = 10, failureRatio = 0.5, delay = 1000)
     public String getResult(String url, int timeout) throws InterruptedException, ExecutionException {
         try {
@@ -123,8 +110,15 @@ public class CamelStatusListener {
                 return res.encodePrettily();
             }
         } catch (Exception ex) {
-//            LOGGER.warn("getResult " + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+//            log.warn("getResult " + (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
         }
         return null;
+    }
+
+    public WebClient getWebClient() {
+        if (webClient == null) {
+            webClient = WebClient.create(vertx);
+        }
+        return webClient;
     }
 }

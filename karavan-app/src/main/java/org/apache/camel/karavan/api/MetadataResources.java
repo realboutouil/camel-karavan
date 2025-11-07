@@ -22,6 +22,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.model.Project;
 import org.apache.camel.karavan.model.ProjectFile;
@@ -30,29 +31,12 @@ import org.apache.camel.karavan.service.CodeService;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 @Path("/ui/metadata")
 public class MetadataResources {
-    
-    @Inject
-    CodeService codeService;
 
-    @Inject
-    KaravanCache karavanCache;
-
-    @GET
-    @Produces(MediaType.TEXT_PLAIN)
-    @Path("/kamelets")
-    public String getKamelets() {
-        StringBuilder kamelets = new StringBuilder(codeService.getResourceFile("/metadata/kamelets.yaml"));
-        List<ProjectFile> custom = karavanCache.getProjectFiles(Project.Type.kamelets.name());
-        if (!custom.isEmpty()) {
-            kamelets.append("\n---\n");
-            kamelets.append(custom.stream()
-                    .map(ProjectFile::getCode)
-                    .collect(Collectors.joining("\n---\n")));
-        }
-        return kamelets.toString();
-    }
+    private final CodeService codeService;
+    private final KaravanCache karavanCache;
 
     @GET
     @Produces(MediaType.TEXT_PLAIN)
@@ -65,6 +49,21 @@ public class MetadataResources {
         if (!projectKamelets.isEmpty()) {
             kamelets.append("\n---\n");
             kamelets.append(projectKamelets.stream()
+                    .map(ProjectFile::getCode)
+                    .collect(Collectors.joining("\n---\n")));
+        }
+        return kamelets.toString();
+    }
+
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("/kamelets")
+    public String getKamelets() {
+        StringBuilder kamelets = new StringBuilder(codeService.getResourceFile("/metadata/kamelets.yaml"));
+        List<ProjectFile> custom = karavanCache.getProjectFiles(Project.Type.kamelets.name());
+        if (!custom.isEmpty()) {
+            kamelets.append("\n---\n");
+            kamelets.append(custom.stream()
                     .map(ProjectFile::getCode)
                     .collect(Collectors.joining("\n---\n")));
         }

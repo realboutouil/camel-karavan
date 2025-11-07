@@ -25,15 +25,12 @@ import {
     Button,
     InputGroupItem,
     TextInputGroup,
-    TextVariants,
-    Text, ValidatedOptions, FormHelperText, HelperText, HelperTextItem, TextInputGroupMain, TextInputGroupUtilities
+    ValidatedOptions, FormHelperText, HelperText, HelperTextItem, TextInputGroupMain, TextInputGroupUtilities
 } from '@patternfly/react-core';
-import {
-    Select,
-    SelectVariant,
-    SelectDirection,
-    SelectOption
-} from '@patternfly/react-core/deprecated';
+import {Text, TextVariants} from '../../utils/PatternFlyCompat';
+// NOTE: These imports are temporary until migration to PatternFly v6 Select
+// @ts-ignore
+import {Select, SelectVariant, SelectDirection, SelectOption} from '@patternfly/react-core';
 import '../../karavan.css';
 import './ComponentPropertyField.css';
 import "@patternfly/patternfly/patternfly.css";
@@ -125,10 +122,10 @@ export function ComponentPropertyField(props: Props) {
                 id={id} name={id}
                 variant={SelectVariant.typeahead}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => parametersChanged(property.name, (!isPlaceholder ? value : undefined))}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => parametersChanged(property.name, (!isPlaceholder ? value : undefined))}
                 selections={value}
                 isCreatable={true}
                 createText=""
@@ -181,10 +178,10 @@ export function ComponentPropertyField(props: Props) {
                     placeholderText="Select or type an URI"
                     variant={SelectVariant.typeahead}
                     aria-label={property.name}
-                    onToggle={(_event, isExpanded) => {
+                    onToggle={(_event: any, isExpanded: boolean) => {
                         openSelect(property.name, isExpanded)
                     }}
-                    onSelect={(e, value, isPlaceholder) => {
+                    onSelect={(e: any, value: any, isPlaceholder?: boolean) => {
                         parametersChanged(property.name, (!isPlaceholder ? value : undefined), property.kind === 'path', undefined);
                     }}
                     selections={value}
@@ -361,10 +358,10 @@ export function ComponentPropertyField(props: Props) {
                 id={id} name={id}
                 variant={SelectVariant.single}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => parametersChanged(property.name, (!isPlaceholder ? value : undefined), property.kind === 'path')}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => parametersChanged(property.name, (!isPlaceholder ? value : undefined), property.kind === 'path')}
                 selections={value !== undefined ? value.toString() : property.defaultValue}
                 isOpen={isSelectOpen(property.name)}
                 aria-labelledby={property.name}
@@ -451,24 +448,7 @@ export function ComponentPropertyField(props: Props) {
             key={id}
             className='component-property-form-group'
             label={getLabel(property, value)}
-            isRequired={property.required}
-            labelIcon={
-                <Popover
-                    position={"left"}
-                    headerContent={property.displayName}
-                    bodyContent={property.description}
-                    footerContent={
-                        <div>
-                            {property.defaultValue !== undefined && <div>{"Default: " + property.defaultValue}</div>}
-                            {property.required && <div>{property.displayName + " is required"}</div>}
-                        </div>
-                    }>
-                    <button type="button" aria-label="More info" onClick={e => e.preventDefault()}
-                            className="pf-v5-c-form__group-label-help">
-                        <HelpIcon/>
-                    </button>
-                </Popover>
-            }>
+            isRequired={property.required}>
             {canBeInternalUri(property) && getInternalUriSelect(property, value)}
             {property.type === 'string' && property.enum === undefined && !canBeInternalUri(property)
                 && getStringInput(property)}

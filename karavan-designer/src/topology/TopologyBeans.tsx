@@ -25,7 +25,7 @@ import {
     Label,
 } from "@patternfly/react-core";
 import {TopologyUtils} from "karavan-core/lib/api/TopologyUtils";
-import {useFilesStore} from "../api/ProjectStore";
+// import {useFilesStore} from "../api/ProjectStore"; // Not available in standalone designer
 import {shallow} from "zustand/shallow";
 import {IntegrationFile} from "karavan-core/lib/model/IntegrationDefinition";
 import {getIntegrations} from "./TopologyApi";
@@ -36,14 +36,15 @@ import {camelIcon, CamelUi} from "../designer/utils/CamelUi";
 export function TopologyBeans() {
 
     const {selectFile} = useTopologyHook();
-    const [files] = useFilesStore((s) => [s.files], shallow);
+    // const [files] = useFilesStore((s) => [s.files], shallow); // Not available in standalone designer
+    const files: any[] = []; // Empty array for standalone designer
     const iFiles = files.map(f => new IntegrationFile(f.name, f.code))
     const integrations = getIntegrations(iFiles);
     const beans = TopologyUtils.findTopologyBeanNodes(integrations);
 
     return (
         beans.length > 0
-            ? <Card isCompact isFlat isRounded className="topology-beans-card">
+            ? <Card isCompact className="topology-beans-card">
                 <CardTitle>Beans</CardTitle>
                 <CardBody className='card-body'>
                     {beans.map((bean, index) => {

@@ -17,47 +17,52 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Composite key for grouping resources by project, environment, and key identifier")
 public class GroupedKey {
 
+    @Schema(description = "Unique identifier of the project", example = "camel-karavan-app")
     private String projectId;
+
+    @Schema(description = "Environment name (e.g., dev, staging, production)", example = "dev")
     private String env;
+
+    @Schema(description = "Unique key identifier within the project and environment", example = "deployment-config")
     private String key;
 
-    public GroupedKey() {
-    }
-
-    public GroupedKey(String projectId, String env, String key) {
-        this.projectId = projectId;
-        this.env = env;
-        this.key = key;
-    }
-
+    /**
+     * Factory method to create a cache key string from components
+     *
+     * @param projectId the project identifier
+     * @param env       the environment name
+     * @param key       the key identifier
+     * @return formatted cache key string
+     */
     public static String create(String projectId, String env, String key) {
         return new GroupedKey(projectId, env, key).getCacheKey();
     }
 
-    public String getEnv() {
-        return env;
+    /**
+     * Generates a cache key by concatenating projectId, env, and key with colons
+     *
+     * @return formatted cache key string
+     */
+    public String getCacheKey() {
+        return projectId + ":" + env + ":" + key;
     }
 
-    public String getKey() {
-        return key;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public void setEnv(String env) {
-        this.env = env;
-    }
-
-    public void setKey(String key) {
-        this.key = key;
+    @Override
+    public int hashCode() {
+        return getCacheKey().hashCode();
     }
 
     @Override
@@ -70,15 +75,6 @@ public class GroupedKey {
         if (!projectId.equals(that.projectId)) return false;
         if (!env.equals(that.env)) return false;
         return key.equals(that.key);
-    }
-
-    public String getCacheKey() {
-        return projectId + ":" + env + ":" + key;
-    }
-
-    @Override
-    public int hashCode() {
-        return getCacheKey().hashCode();
     }
 
     @Override

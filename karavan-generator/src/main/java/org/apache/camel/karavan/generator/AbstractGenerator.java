@@ -259,13 +259,17 @@ public class AbstractGenerator {
     }
 
     protected void saveFile(String folder, String fileName, String text) {
-        folder = rootPath.concat(File.separator).concat(folder);
-        Path path = Paths.get(folder);
+        Path path;
+        if (rootPath == null || rootPath.isEmpty()) {
+            path = Paths.get(folder);
+        } else {
+            path = Paths.get(rootPath, folder);
+        }
         try {
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
             }
-            File targetFile = Paths.get(folder, fileName).toFile();
+            File targetFile = Paths.get(path.toString(), fileName).toFile();
             LOGGER.info("Saving file " + targetFile.getAbsolutePath());
             Files.copy(new ByteArrayInputStream(text.getBytes()), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
@@ -274,7 +278,17 @@ public class AbstractGenerator {
     }
 
     protected void writeFileText(String filePath, String data) throws IOException {
-        Files.writeString(Paths.get(rootPath.concat(File.separator).concat(filePath)), data);
+        Path path;
+        if (rootPath == null || rootPath.isEmpty()) {
+            path = Paths.get(filePath);
+        } else {
+            path = Paths.get(rootPath, filePath);
+        }
+        // Ensure parent directories exist
+        if (path.getParent() != null) {
+            Files.createDirectories(path.getParent());
+        }
+        Files.writeString(path, data);
     }
 
     protected JsonObject getProperties(JsonObject definitions, String classname) {

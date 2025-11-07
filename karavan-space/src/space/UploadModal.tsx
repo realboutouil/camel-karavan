@@ -17,7 +17,7 @@
 
 import React from 'react';
 import {
-    Button, Modal, FormGroup, ModalVariant, Form, FileUpload
+    ActionGroup, Button, Modal, FormGroup, ModalVariant, Form, FileUpload
 } from '@patternfly/react-core';
 import '../designer/karavan.css';
 import {GeneratorApi} from "../api/GeneratorApi";
@@ -91,10 +91,14 @@ export class UploadModal extends React.Component<Props, State> {
                 variant={ModalVariant.small}
                 isOpen={this.props.isOpen}
                 onClose={() => this.closeModal(undefined)}
-                actions={[
-                    <Button isLoading={generating} key="confirm" variant="primary" onClick={this.saveAndCloseModal} isDisabled={isDisabled}>Save</Button>,
-                    <Button key="cancel" variant="secondary" onClick={event => this.closeModal(undefined)}>Cancel</Button>
-                ]}
+                action={
+                    <div className="modal-footer">
+                        <ActionGroup className="deploy-buttons">
+                            <Button isLoading={generating} key="confirm" variant="primary" onClick={this.saveAndCloseModal} isDisabled={isDisabled}>Save</Button>
+                            <Button key="cancel" variant="secondary" onClick={event => this.closeModal(undefined)}>Cancel</Button>
+                        </ActionGroup>
+                    </div>
+                }
             >
                 <Form>
                     <FormGroup fieldId="upload">

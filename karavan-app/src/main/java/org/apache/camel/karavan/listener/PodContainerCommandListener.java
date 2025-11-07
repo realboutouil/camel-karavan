@@ -22,35 +22,28 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.KaravanCache;
-import org.apache.camel.karavan.KaravanConstants;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
 import org.apache.camel.karavan.model.ContainerType;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.model.PodContainerStatus;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_DELETE_CONTAINER;
 import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_UPDATED;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class PodContainerCommandListener {
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final KaravanProperties properties;
 
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    KubernetesService kubernetesService;
-
-    @Inject
-    DockerService dockerService;
-
-    @Inject
-    EventBus eventBus;
+    private final KaravanCache karavanCache;
+    private final KubernetesService kubernetesService;
+    private final DockerService dockerService;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = CMD_DELETE_CONTAINER, blocking = true)
     public void deletePodContainer(String projectId) {
@@ -63,9 +56,9 @@ public class PodContainerCommandListener {
     }
 
     private void setContainerStatusTransit(String name, String type) {
-        PodContainerStatus status = karavanCache.getPodContainerStatus(name, environment, name);
+        PodContainerStatus status = karavanCache.getPodContainerStatus(name, properties.environment(), name);
         if (status == null) {
-            status = PodContainerStatus.createByType(name, environment, ContainerType.valueOf(type));
+            status = PodContainerStatus.createByType(name, properties.environment(), ContainerType.valueOf(type));
         }
         status.setInTransit(true);
         eventBus.publish(POD_CONTAINER_UPDATED, JsonObject.mapFrom(status));

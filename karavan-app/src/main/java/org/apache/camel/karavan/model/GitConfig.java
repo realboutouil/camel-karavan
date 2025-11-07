@@ -17,58 +17,31 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Git repository configuration containing connection details and authentication information")
 public class GitConfig {
+
+    @Schema(description = "Git repository URI", example = "https://github.com/username/repository.git")
     private String uri;
+
+    @Schema(description = "Username for Git authentication", example = "gituser")
     private String username;
+
+    @Schema(description = "Password or personal access token for Git authentication", example = "ghp_xxxxxxxxxxxx")
     private String password;
+
+    @Schema(description = "Git branch to use", example = "main")
     private String branch;
+
+    @Schema(description = "Path to the private SSH key file for Git authentication", example = "/home/user/.ssh/id_rsa")
     private String privateKeyPath;
-
-    public GitConfig(String uri, String username, String password, String branch, String privateKeyPath) {
-        this.uri = uri;
-        this.username = username;
-        this.password = password;
-        this.branch = branch;
-        this.privateKeyPath = privateKeyPath;
-    }
-
-    public String getUri() {
-        return uri;
-    }
-
-    public void setUri(String uri) {
-        this.uri = uri;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getBranch() {
-        return branch;
-    }
-
-    public void setBranch(String branch) {
-        this.branch = branch;
-    }
-
-    public String getPrivateKeyPath() {
-        return privateKeyPath;
-    }
-
-    public void setPrivateKeyPath(String privateKeyPath) {
-        this.privateKeyPath = privateKeyPath;
-    }
 }

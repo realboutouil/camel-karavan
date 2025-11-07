@@ -48,7 +48,7 @@ echo "Set application.properties camel-karavan-devmode:$1";
 sed -i.bak 's/camel-karavan-devmode.*/camel-karavan-devmode:'"$1"'/g' karavan-app/src/main/resources/application.properties 
 
 echo "Set docker-compose-gitea.yaml camel-karavan:$1";
-sed -i.bak 's/camel-karavan.*/camel-karavan:'"$1"'/g' docs/install/karavan-docker/docker-compose-gitea.yaml 
+sed -i.bak 's/camel-karavan.*/camel-karavan:'"$1"'/g' docs/install/karavan-docker/docker-compose-local.yaml
 
 echo "Set docker-compose.yaml camel-karavan:$1";
 sed -i.bak 's/camel-karavan.*/camel-karavan:'"$1"'/g' docs/install/karavan-docker/docker-compose.yaml 

@@ -22,33 +22,24 @@ import {
     Switch,
     ExpandableSection,
     TextArea,
-    Chip,
     TextInputGroup,
     TextInputGroupMain,
     TextInputGroupUtilities,
-    ChipGroup,
     Button,
-    Text,
     Tooltip,
     Card,
     InputGroup,
     SelectOptionProps,
-    capitalize,
     InputGroupItem,
-    TextVariants,
-    ToggleGroup,
-    ToggleGroupItem,
     ValidatedOptions,
     FormHelperText,
     HelperText,
-    HelperTextItem, Label
+    HelperTextItem,
 } from '@patternfly/react-core';
-import {
-    Select,
-    SelectVariant,
-    SelectDirection,
-    SelectOption
-} from '@patternfly/react-core/deprecated';
+import {Text, TextVariants, Chip} from '../../utils/PatternFlyCompat';
+// NOTE: These imports are temporary until migration to PatternFly v6 Select
+// @ts-ignore
+import {Select, SelectVariant, SelectDirection, SelectOption, ChipGroup} from '@patternfly/react-core';
 import '../../karavan.css';
 import './DslPropertyField.css';
 import "@patternfly/patternfly/patternfly.css";
@@ -68,11 +59,8 @@ import {CamelDefinitionApi} from "karavan-core/lib/api/CamelDefinitionApi";
 import AddIcon from "@patternfly/react-icons/dist/js/icons/plus-circle-icon";
 import {MediaTypes} from "../../utils/MediaTypes";
 import {ComponentProperty} from "karavan-core/lib/model/ComponentModels";
-import {InfrastructureSelector} from "./InfrastructureSelector";
+import {ConfigurationSelectorModal} from "./ConfigurationSelectorModal";
 import {InfrastructureAPI} from "../../utils/InfrastructureAPI";
-import EditorIcon from "@patternfly/react-icons/dist/js/icons/code-icon";
-import {ExpressionModalEditor} from "../../../expression/ExpressionModalEditor";
-import DockerIcon from "@patternfly/react-icons/dist/js/icons/docker-icon";
 import {useDesignerStore, useIntegrationStore} from "../../DesignerStore";
 import {shallow} from "zustand/shallow";
 import {
@@ -81,11 +69,9 @@ import {
     BeanFactoryDefinition
 } from "karavan-core/lib/model/CamelDefinition";
 import {TemplateApi} from "karavan-core/lib/api/TemplateApi";
-import {KubernetesIcon} from "../../icons/ComponentIcons";
 import {BeanProperties} from "./BeanProperties";
 import {PropertyPlaceholderDropdown} from "./PropertyPlaceholderDropdown";
 import {VariablesDropdown} from "./VariablesDropdown";
-import {ROUTE, GLOBAL} from "karavan-core/lib/api/VariableUtil";
 import {SpiBeanApi} from "karavan-core/lib/api/SpiBeanApi";
 import {SelectField} from "./SelectField";
 import {PropertyUtil} from "./PropertyUtil";
@@ -93,6 +79,9 @@ import {usePropertiesStore} from "../PropertyStore";
 import {Property} from "karavan-core/lib/model/KameletModels";
 import {isSensitiveFieldValid} from "../../utils/ValidatorUtils";
 import ExclamationCircleIcon from "@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon";
+import {EventBus} from "../../utils/EventBus";
+import CogIcon from "@patternfly/react-icons/dist/js/icons/cog-icon";
+import TimesIcon from "@patternfly/react-icons/dist/esm/icons/times-icon";
 
 const beanPrefix = "#bean:";
 const classPrefix = "#class:";
@@ -107,40 +96,35 @@ interface Props {
     onParameterChange?: (parameter: string, value: string | number | boolean | any, pathParameter?: boolean, newRoute?: RouteToCreate) => void,
     hideLabel?: boolean,
     dslLanguage?: [string, string, string],
+    expressionEditor: React.ComponentType<any>;
 }
 
 export function DslPropertyField(props: Props) {
 
-    const [integration, setIntegration, addVariable, files] = useIntegrationStore((s) => [s.integration, s.setIntegration, s.addVariable, s.files], shallow)
-    const [dark, setSelectedStep, beans] = useDesignerStore((s) => [s.dark, s.setSelectedStep, s.beans], shallow)
+    const [integration, setIntegration, files, variables] = useIntegrationStore((s) => [s.integration, s.setIntegration, s.files, s.variables], shallow)
+    const [setSelectedStep, beans, selectedStep] = useDesignerStore((s) => [s.setSelectedStep, s.beans, s.selectedStep], shallow)
     const [propertyFilter, changedOnly, requiredOnly, sensitiveOnly] = usePropertiesStore((s) =>
         [s.propertyFilter, s.changedOnly, s.requiredOnly, s.sensitiveOnly], shallow)
 
     const [isShowAdvanced, setIsShowAdvanced] = useState<string[]>([]);
     const [arrayValues, setArrayValues] = useState<Map<string, string>>(new Map<string, string>());
     const [selectStatus, setSelectStatus] = useState<Map<string, boolean>>(new Map<string, boolean>());
-    const [showEditor, setShowEditor] = useState<boolean>(false);
-    const [infrastructureSelector, setInfrastructureSelector] = useState<boolean>(false);
-    const [infrastructureSelectorProperty, setInfrastructureSelectorProperty] = useState<string | undefined>(undefined);
-    const [customCode, setCustomCode] = useState<string>('');
+    const [configurationSelector, setConfigurationSelector] = useState<boolean>(false);
+    const [configurationSelectorProperty, setConfigurationSelectorProperty] = useState<string | undefined>(undefined);
+    const [configurationSelectorDefaultTab, setConfigurationSelectorDefaultTab] = useState<string>('properties');
     const ref = useRef<any>(null);
     const [textValue, setTextValue] = useState<any>();
-    const [variableType, setVariableType] = useState<'global:' | 'route:' | ''>('');
     const [checkChanges, setCheckChanges] = useState<boolean>(false);
 
     useEffect(() => {
-        setTextVariable(value)
+        setTextValue(value)
     }, [])
 
     useEffect(() => {
         if (checkChanges) {
             const interval = setInterval(() => {
                 if (props.value !== textValue) {
-                    if (isVariable && textValue !== undefined) {
-                        propertyChanged(property.name, variableType.concat(textValue));
-                    } else {
-                        propertyChanged(property.name, textValue);
-                    }
+                    propertyChanged(property.name, textValue);
                 }
             }, 700);
             return () => {
@@ -148,23 +132,6 @@ export function DslPropertyField(props: Props) {
             }
         }
     }, [checkChanges, textValue])
-
-    function setTextVariable(val: any) {
-        if (isVariable) {
-            if (val?.toString().startsWith(GLOBAL)) {
-                setTextValue(val.toString().replace(GLOBAL, ''));
-                setVariableType(GLOBAL);
-            } else if (val?.toString().startsWith(ROUTE)) {
-                setTextValue(val.toString().replace(ROUTE, ''));
-                setVariableType(ROUTE);
-            } else {
-                setVariableType('');
-                setTextValue(val?.toString())
-            }
-        } else {
-            setTextValue(val);
-        }
-    }
 
     function openSelect(propertyName: string, isExpanded: boolean) {
         setSelectStatus(new Map<string, boolean>([[propertyName, isExpanded]]))
@@ -182,9 +149,6 @@ export function DslPropertyField(props: Props) {
         setCheckChanges(false);
         props.onPropertyChange?.(fieldId, value, newRoute);
         clearSelection(fieldId);
-        if (isVariable) {
-            addVariable(value);
-        }
     }
 
     function arrayChanged(fieldId: string, value: string) {
@@ -257,7 +221,7 @@ export function DslPropertyField(props: Props) {
             && !['ToDynamicDefinition', 'WireTapDefinition', 'InterceptFromDefinition', 'InterceptSendToEndpointDefinition'].includes(dslName)
     }
 
-    function selectInfrastructure(value: string) {
+    function selectConfiguration(value: string) {
         // check if there is a selection
         const textVal = ref.current;
         if (textVal != null) {
@@ -268,93 +232,60 @@ export function DslPropertyField(props: Props) {
                 const selectedText = prevValue.substring(cursorStart, cursorEnd)
                 value = prevValue.replace(selectedText, value);
             }
-            const propertyName = infrastructureSelectorProperty;
+            const propertyName = configurationSelectorProperty;
             if (propertyName) {
                 if (value.startsWith("config") || value.startsWith("secret")) value = "{{" + value + "}}";
                 setTextValue(value);
                 propertyChanged(propertyName, value);
-                setInfrastructureSelector(false);
-                setInfrastructureSelectorProperty(undefined);
+                setConfigurationSelector(false);
+                setConfigurationSelectorProperty(undefined);
             }
         }
     }
 
-    function openInfrastructureSelector(propertyName: string) {
-        setInfrastructureSelector(true);
-        setInfrastructureSelectorProperty(propertyName);
+    function openConfigurationSelector(propertyName: string) {
+        setConfigurationSelector(true);
+        setConfigurationSelectorProperty(propertyName);
     }
 
-    function closeInfrastructureSelector() {
-        setInfrastructureSelector(false);
+    function closeConfigurationSelector() {
+        setConfigurationSelector(false);
     }
 
-    function getInfrastructureSelectorModal() {
+    function getConfigurationSelectorModal() {
+        const {dslLanguage} = props;
         return (
-            <InfrastructureSelector
+            configurationSelector && <ConfigurationSelectorModal
                 dark={false}
-                isOpen={infrastructureSelector}
-                onClose={() => closeInfrastructureSelector()}
-                onSelect={selectInfrastructure}/>)
+                isOpen={configurationSelector}
+                onClose={() => closeConfigurationSelector()}
+                name={property.name}
+                customCode={value}
+                defaultTabIndex={configurationSelectorDefaultTab}
+                dslLanguage={dslLanguage}
+                title={property.displayName}
+                onSave={(fieldId, value1) => {
+                    propertyChanged(property.name, value1)
+                    setTextValue(value1);
+                    closeConfigurationSelector();
+                }}
+                expressionEditor={props.expressionEditor}
+                onSelect={selectConfiguration}/>)
     }
 
     function getVariableInput(property: PropertyMeta) {
-        return <InputGroup className={valueChangedClassName}>
-            <InputGroupItem>
-                <ToggleGroup aria-label="Variable type">
-                    <ToggleGroupItem text="global:" key='global' buttonId={"global-variable-" + property.name}
-                                     isSelected={variableType === GLOBAL}
-                                     onChange={(_, selected) => {
-                                         if (selected) {
-                                             setVariableType(GLOBAL);
-                                             propertyChanged(property.name, GLOBAL.concat(textValue))
-                                         } else {
-                                             setVariableType('');
-                                             propertyChanged(property.name, textValue);
-                                         }
-                                     }}
-                    />
-                    <ToggleGroupItem text="route:" key='route' buttonId={"route-variable" + property.name}
-                                     className='route-variable'
-                                     isSelected={variableType === ROUTE}
-                                     onChange={(_, selected) => {
-                                         if (selected) {
-                                             setVariableType(ROUTE);
-                                             propertyChanged(property.name, ROUTE.concat(textValue))
-                                         } else {
-                                             setVariableType('');
-                                             propertyChanged(property.name, textValue);
-                                         }
-                                     }}
-                    />
-                </ToggleGroup>
-            </InputGroupItem>
-            <InputGroupItem isFill>
-                <TextInput ref={ref}
-                           className="text-field route-variable" isRequired
-                           type='text'
-                           id={property.name} name={property.name}
-                           value={textValue?.toString() || ''}
-                           customIcon={property.type !== 'string' ?
-                               <Text component={TextVariants.p}>{property.type}</Text> : undefined}
-                           onBlur={_ => {
-                               if (textValue !== undefined) {
-                                   propertyChanged(property.name, variableType.concat(textValue))
-                               }
-                           }}
-                           onFocus={_ => setCheckChanges(true)}
-                           onChange={(_, v) => {
-                               setTextValue(v);
-                               setCheckChanges(true);
-                           }}
-                />
-            </InputGroupItem>
-            <InputGroupItem>
-                <VariablesDropdown onVariableChange={name => {
-                    propertyChanged(property.name, name);
-                    setTextVariable(name);
-                }}/>
-            </InputGroupItem>
-        </InputGroup>
+        const varName = textValue?.toString() || '';
+        return (
+            <VariablesDropdown
+                initialValue={varName}
+                valueChangedClassName={valueChangedClassName}
+                options={variables.map(v => ({value: v, children: v}))}
+                onChange={(variableType: string, variableName: string) => {
+                    propertyChanged(property.name, variableType.concat(variableName));
+                    setTextValue(variableType.concat(variableName));
+                }}
+            />
+        )
     }
 
     function isNumeric(num: any) {
@@ -402,82 +333,54 @@ export function DslPropertyField(props: Props) {
     }
 
     function getStringInput(property: PropertyMeta) {
-        const inInfrastructure = InfrastructureAPI.infrastructure !== 'local';
         const noInfraSelectorButton = ["uri", "id", "description", "group"].includes(property.name);
-        const icon = InfrastructureAPI.infrastructure === 'kubernetes' ? KubernetesIcon("infra-button") : <DockerIcon/>
         const isNumber = ['integer', 'number', 'duration'].includes(property.type);
         const uriReadOnly = isUriReadOnly(property);
-        const showEditorButton = !uriReadOnly && !isNumber && !property.secret && !['id', 'description'].includes(property.name);
-        return <InputGroup className={valueChangedClassName}>
-            {inInfrastructure && !showEditor && !noInfraSelectorButton &&
-                <InputGroupItem>
-                    <Tooltip position="bottom-end"
-                             content={"Select from " + capitalize(InfrastructureAPI.infrastructure)}>
-                        <Button variant="control" onClick={e => openInfrastructureSelector(property.name)}>
-                            {icon}
+        return (
+            <InputGroup className={valueChangedClassName}>
+                <TextInputGroup className='text-field'>
+                    <TextInputGroupMain
+                        ref={ref}
+                        type={property.secret ? "password" : "text"}
+                        autoComplete="off"
+                        id={property.name} name={property.name}
+                        value={textValue?.toString() || ''}
+                        readOnly={uriReadOnly}
+                        onBlur={_ => {
+                            if (isNumber && isNumeric((textValue))) {
+                                propertyChanged(property.name, Number(textValue))
+                            } else if (!isNumber) {
+                                propertyChanged(property.name, textValue)
+                            }
+                        }}
+                        onFocus={_ => setCheckChanges(true)}
+                        onChange={(_, v) => {
+                            if (isNumber && isNumeric(v)) {
+                                setTextValue(v);
+                                setCheckChanges(true);
+                            } else if (!isNumber) {
+                                setTextValue(v);
+                                setCheckChanges(true);
+                            }
+                        }}
+                    />
+                    <TextInputGroupUtilities>
+                        <Button variant="plain" className='button-clear' onClick={_ => {
+                            propertyChanged(property.name, '');
+                            setTextValue('');
+                            setCheckChanges(true);
+                        }}>
+                            <TimesIcon aria-hidden={true}/>
                         </Button>
-                    </Tooltip>
-                </InputGroupItem>
-            }
-            {(!showEditor || property.secret) &&
-                <TextInput ref={ref}
-                           className="text-field" isRequired
-                           type={property.secret ? "password" : "text"}
-                           autoComplete="off"
-                           id={property.name} name={property.name}
-                           value={textValue?.toString() || ''}
-                           customIcon={property.type !== 'string' ?
-                               <Text component={TextVariants.p}>{property.type}</Text> : undefined}
-                           onBlur={_ => {
-                               if (isNumber && isNumeric((textValue))) {
-                                   propertyChanged(property.name, Number(textValue))
-                               } else if (!isNumber) {
-                                   propertyChanged(property.name, textValue)
-                               }
-                           }}
-                           onFocus={_ => setCheckChanges(true)}
-                           onChange={(_, v) => {
-                               if (isNumber && isNumeric(v)) {
-                                   setTextValue(v);
-                                   setCheckChanges(true);
-                               } else if (!isNumber) {
-                                   setTextValue(v);
-                                   setCheckChanges(true);
-                               }
-                           }}
-                           readOnlyVariant={uriReadOnly ? "default" : undefined}/>
-            }
-            {showEditorButton && <InputGroupItem>
-                <Tooltip position="bottom-end" content={"Show Editor"}>
-                    <Button variant="control" onClick={e => setShowEditor(!showEditor)}>
-                        <EditorIcon/>
-                    </Button>
-                </Tooltip>
-            </InputGroupItem>}
-            {showEditor && <InputGroupItem>
-                <ExpressionModalEditor name={property.name}
-                                       customCode={value}
-                                       showEditor={showEditor}
-                                       dark={dark}
-                                       dslLanguage={undefined}
-                                       title={property.displayName}
-                                       onClose={() => setShowEditor(false)}
-                                       onSave={(fieldId, value1) => {
-                                           propertyChanged(property.name, value1)
-                                           setTextValue(value1);
-                                           setShowEditor(false);
-                                       }}/>
-            </InputGroupItem>}
-            <InputGroupItem>
-                <PropertyPlaceholderDropdown
-                    property={property} value={value}
-                    onDslPropertyChange={(_, v, newRoute) => {
-                        setTextValue(v);
-                        propertyChanged(property.name, v)
-                        setCheckChanges(true);
-                    }}/>
-            </InputGroupItem>
-        </InputGroup>
+                    </TextInputGroupUtilities>
+                </TextInputGroup>
+                {!noInfraSelectorButton &&
+                    <InputGroupItem>
+                        {getOpenConfigButton(property)}
+                    </InputGroupItem>
+                }
+            </InputGroup>
+        )
     }
 
     function showCode(name: string, javaType: string) {
@@ -485,17 +388,13 @@ export function DslPropertyField(props: Props) {
         InfrastructureAPI.onGetCustomCode?.(name, property.javaType).then(value => {
             if (value === undefined) {
                 const code = TemplateApi.generateCode(property.javaType, name) || '';
-                setCustomCode(code);
-                setShowEditor(true);
-            } else {
-                setCustomCode(value);
-                setShowEditor(true);
+                InfrastructureAPI.onSaveCustomCode(name, code, true);
             }
+            InfrastructureAPI.onInternalConsumerClick(undefined, undefined, undefined, name + '.java');
         }).catch((reason: any) => console.log(reason))
     }
 
     function getJavaTypeGeneratedInput(property: PropertyMeta, value: any) {
-        const {dslLanguage} = props;
         const selectOptions: SelectOptionProps[] = [];
         const allBeansByJavaInterface = SpiBeanApi.findByInterfaceType(property.javaType);
         const allBeansJavaTypes: (string | undefined)[] = allBeansByJavaInterface.map(b => b.javaType).filter(b => b !== undefined) || [];
@@ -528,33 +427,18 @@ export function DslPropertyField(props: Props) {
                     />
                 </InputGroupItem>
                 <InputGroupItem>
-                    <Tooltip position="bottom-end" content={"Create Java Class"}>
+                    <Tooltip position="bottom-end" content={"Open Java Class"}>
                         <Button isDisabled={value?.length === 0} variant="control"
                                 onClick={e => showCode(value, property.javaType)}>
                             <PlusIcon/>
                         </Button>
                     </Tooltip>
                 </InputGroupItem>
-                {showEditor && <InputGroupItem>
-                    <ExpressionModalEditor name={property.name}
-                                           customCode={customCode}
-                                           showEditor={showEditor}
-                                           dark={dark}
-                                           dslLanguage={dslLanguage}
-                                           title="Java Class"
-                                           onClose={() => setShowEditor(false)}
-                                           onSave={(fieldId, value1) => {
-                                               propertyChanged(fieldId, value);
-                                               InfrastructureAPI.onSaveCustomCode?.(value, value1);
-                                               setShowEditor(false)
-                                           }}/>
-                </InputGroupItem>}
             </InputGroup>
         )
     }
 
     function getTextArea(property: PropertyMeta, value: any) {
-        const {dslLanguage} = props;
         return (
             <InputGroup className={valueChangedClassName}>
                 <InputGroupItem isFill>
@@ -573,26 +457,8 @@ export function DslPropertyField(props: Props) {
                     />
                 </InputGroupItem>
                 <InputGroupItem>
-                    <Tooltip position="bottom-end" content={"Show Editor"}>
-                        <Button variant="control" onClick={e => setShowEditor(!showEditor)}>
-                            <EditorIcon/>
-                        </Button>
-                    </Tooltip>
+                    {getOpenConfigButton(property, 'editor')}
                 </InputGroupItem>
-                {showEditor && <InputGroupItem>
-                    <ExpressionModalEditor name={property.name}
-                                           customCode={value}
-                                           showEditor={showEditor}
-                                           dark={dark}
-                                           dslLanguage={dslLanguage}
-                                           title={`Expression (${dslLanguage?.[0]})`}
-                                           onClose={() => setShowEditor(false)}
-                                           onSave={(fieldId, value1) => {
-                                               propertyChanged(fieldId, value1);
-                                               setTextValue(value1);
-                                               setShowEditor(false);
-                                           }}/>
-                </InputGroupItem>}
             </InputGroup>
         )
     }
@@ -603,6 +469,7 @@ export function DslPropertyField(props: Props) {
                 <ExpressionField
                     property={property}
                     value={value}
+                    expressionEditor={props.expressionEditor}
                     onExpressionChange={props.onExpressionChange}/>
             </div>
         )
@@ -613,6 +480,7 @@ export function DslPropertyField(props: Props) {
             <div className="object">
                 {value && <ObjectField property={property}
                                        value={value}
+                                       expressionEditor={props.expressionEditor}
                                        onPropertyUpdate={propertyChanged}/>}
             </div>
         )
@@ -628,7 +496,7 @@ export function DslPropertyField(props: Props) {
             isChecked = property.defaultValue === 'true';
         }
         return (
-            <TextInputGroup className={"input-group " + valueChangedClassName}>
+            <InputGroup className={"input-group " + valueChangedClassName}>
                 <InputGroupItem>
                     <Switch
                         isDisabled={isDisabled}
@@ -644,12 +512,12 @@ export function DslPropertyField(props: Props) {
                             setCheckChanges(false);
                         }}/>
                 </InputGroupItem>
-                <InputGroupItem isFill>
-                    <TextInput
+                <TextInputGroup className='boolean-text-field'>
+                    <TextInputGroupMain
+                        ref={ref}
                         id={property.name + "-placeholder"}
                         name={property.name + "-placeholder"}
                         type="text"
-                        validated={validated}
                         aria-label="placeholder"
                         value={!isValueBoolean ? textValue?.toString() : ''}
                         onBlur={_ => propertyChanged(property.name, textValue)}
@@ -658,16 +526,36 @@ export function DslPropertyField(props: Props) {
                             setCheckChanges(true);
                         }}
                     />
+                    <TextInputGroupUtilities>
+                        <Button variant="plain" className='button-clear' onClick={_ => {
+                            propertyChanged(property.name, '');
+                            setTextValue('');
+                            setCheckChanges(true);
+                        }}>
+                            <TimesIcon aria-hidden={true}/>
+                        </Button>
+                    </TextInputGroupUtilities>
+                </TextInputGroup>
+                <InputGroupItem className=''>
+                    {getOpenConfigButton(property)}
                 </InputGroupItem>
-                <InputGroupItem>
-                    <PropertyPlaceholderDropdown property={property} value={value}
-                                                 onDslPropertyChange={(_, v, newRoute) => {
-                                                     setTextValue(v);
-                                                     propertyChanged(property.name, v, newRoute);
-                                                     setCheckChanges(false);
-                                                 }}/>
-                </InputGroupItem>
-            </TextInputGroup>
+            </InputGroup>
+        )
+    }
+
+    function getOpenConfigButton(property: PropertyMeta, configurationSelectorDefaultTab: string = 'properties') {
+        if (element?.dslName === 'LogDefinition' && property.name === 'message') {
+            configurationSelectorDefaultTab = 'editor'
+        }
+        return (
+            <Tooltip position="bottom-end" content="Open config selector">
+                <Button variant="control" className='open-config-buton' onClick={e => {
+                    setConfigurationSelectorDefaultTab(configurationSelectorDefaultTab)
+                    openConfigurationSelector(property.name)
+                }}>
+                    <CogIcon style={{fill: 'var(--pf-v5-global--Color--200)'}}/>
+                </Button>
+            </Tooltip>
         )
     }
 
@@ -684,10 +572,10 @@ export function DslPropertyField(props: Props) {
                 className={valueChangedClassName}
                 variant={SelectVariant.single}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
                 selections={value}
                 isOpen={isSelectOpen(property.name)}
                 aria-labelledby={property.name}
@@ -710,10 +598,10 @@ export function DslPropertyField(props: Props) {
                 className={valueChangedClassName}
                 variant={SelectVariant.single}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
                 selections={value}
                 isOpen={isSelectOpen(property.name)}
                 id={property.name}
@@ -745,15 +633,15 @@ export function DslPropertyField(props: Props) {
                 placeholderText="Select Media Type"
                 variant={SelectVariant.typeahead}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
                 selections={value}
                 isOpen={isSelectOpen(property.name)}
                 isCreatable={false}
                 isInputFilterPersisted={false}
-                onFilter={(e, text) => getMediaTypeSelectOptions(text)}
+                onFilter={(e: any, text: string) => getMediaTypeSelectOptions(text)}
                 aria-labelledby={property.name}
                 direction={SelectDirection.down}
             >
@@ -768,6 +656,8 @@ export function DslPropertyField(props: Props) {
         } else if (element?.dslName === 'SagaDefinition' && ['compensation', 'completion'].includes(property.name)) {
             return true;
         } else if (element && ['GetDefinition', 'PostDefinition', 'PutDefinition', 'PatchDefinition', 'DeleteDefinition', 'HeadDefinition'].includes(element?.dslName) && property.name === 'to') {
+            return true;
+        } else if (property.name === 'deadLetterUri') {
             return true;
         } else {
             return false;
@@ -788,6 +678,21 @@ export function DslPropertyField(props: Props) {
         return property.javaType.length !== 0;
     }
 
+    function createNewRoute(property: PropertyMeta, value: any): void {
+        try {
+            if (property.name === 'deadLetterUri' && selectedStep?.dslName === 'RouteConfigurationDefinition') {
+                const newRoute = CamelUi.createNewInternalRoute(value);
+                propertyChanged(property.name, value, newRoute)
+            } else {
+                const split: string = value?.toString().split(':');
+                InfrastructureAPI.onCreateNewRoute(split[0], 'name', split[1]);
+            }
+        } catch (error: any) {
+            console.error(error);
+            EventBus.sendAlert('Error', error?.message, 'danger')
+        }
+    }
+
     function getInternalUriSelect(property: PropertyMeta, value: any) {
         const selectOptions: JSX.Element[] = [];
         const uris: string[] = CamelUi.getInternalUris(files, true, true, true);
@@ -802,11 +707,11 @@ export function DslPropertyField(props: Props) {
                         placeholderText="Select or type an URI"
                         variant={SelectVariant.typeahead}
                         aria-label={property.name}
-                        onClear={event => propertyChanged(property.name, undefined, undefined)}
-                        onToggle={(_event, isExpanded) => {
+                        onClear={(event: any) => propertyChanged(property.name, undefined, undefined)}
+                        onToggle={(_event: any, isExpanded: boolean) => {
                             openSelect(property.name, isExpanded)
                         }}
-                        onSelect={(e, value, isPlaceholder) => {
+                        onSelect={(e: any, value: any, isPlaceholder?: boolean) => {
                             propertyChanged(property.name, (!isPlaceholder ? value : undefined), undefined)
                         }}
                         selections={value}
@@ -824,8 +729,7 @@ export function DslPropertyField(props: Props) {
                     <Tooltip position="bottom-end" content={"Create route"}>
                         <Button isDisabled={value === undefined} variant="control" onClick={e => {
                             if (value) {
-                                const newRoute = CamelUi.createNewInternalRoute(value);
-                                propertyChanged(property.name, value, newRoute)
+                                createNewRoute(property, value);
                             }
                         }}>
                             {<PlusIcon/>}
@@ -853,6 +757,7 @@ export function DslPropertyField(props: Props) {
                 {v && <ObjectField property={property}
                                    value={v}
                                    hideLabel={hideLabel}
+                                   expressionEditor={props.expressionEditor}
                                    onPropertyUpdate={(f, v) => onMultiValueObjectUpdate(index, f, v)}
                 />}
             </div>
@@ -874,9 +779,11 @@ export function DslPropertyField(props: Props) {
                             {getMultiObjectFieldProps(property, value, v, index, index > 0)}
                         </div>
                     else
-                        return <Card key={property + "-" + index} className="object-value">
-                            {getMultiObjectFieldProps(property, value, v, index)}
-                        </Card>
+                        return (
+                            <Card key={property + "-" + index} className="object-value">
+                                {getMultiObjectFieldProps(property, value, v, index)}
+                            </Card>
+                        )
                 })}
                 <Button variant="link" className="add-button"
                         onClick={e => {
@@ -950,6 +857,7 @@ export function DslPropertyField(props: Props) {
                         key={property.id}
                         property={property}
                         value={getKameletPropertyValue(property)}
+                        expressionEditor={props.expressionEditor}
                         required={requiredParameters?.includes(property.id)}
                     />)}
             </div>
@@ -970,6 +878,7 @@ export function DslPropertyField(props: Props) {
                         property={kp}
                         value={getComponentPropertyValue(kp)}
                         element={props.element}
+                        expressionEditor={props.expressionEditor}
                         onParameterChange={props.onParameterChange}
                     />)
                 })}
@@ -981,7 +890,7 @@ export function DslPropertyField(props: Props) {
         return (
             <ExpandableSection
                 toggleText={label}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     setIsShowAdvanced(prevState => {
                         if (isExpanded && !isShowAdvanced.includes(label)) {
                             prevState = [...prevState, label]
@@ -998,6 +907,7 @@ export function DslPropertyField(props: Props) {
                             key={kp.name}
                             property={kp}
                             value={getComponentPropertyValue(kp)}
+                            expressionEditor={props.expressionEditor}
                             onParameterChange={props.onParameterChange}
                         />
                     )}
@@ -1040,7 +950,7 @@ export function DslPropertyField(props: Props) {
     }
 
     function getBeanProperties(type: 'constructors' | 'properties') {
-        return <BeanProperties type={type} onChange={changeBean} onClone={changeBean}/>
+        return <BeanProperties type={type} onChange={changeBean} onClone={changeBean} expressionEditor={props.expressionEditor}/>
     }
 
     function isMultiValueField(property: PropertyMeta): boolean {
@@ -1109,7 +1019,7 @@ export function DslPropertyField(props: Props) {
             validated !== ValidatedOptions.default
                 ? <FormHelperText>
                     <HelperText>
-                        <HelperTextItem icon={<ExclamationCircleIcon />} variant={validated}>
+                        <HelperTextItem icon={<ExclamationCircleIcon/>} variant={validated}>
                             {'Must be a placeholder {{ }} or secret {{secret:name/key}}'}
                         </HelperTextItem>
                     </HelperText>
@@ -1134,8 +1044,7 @@ export function DslPropertyField(props: Props) {
             <FormGroup
                 className='dsl-property-form-group'
                 label={props.hideLabel ? undefined : getLabel(property, value, isKamelet)}
-                isRequired={property.required}
-                labelIcon={isParameter(property) ? undefined : getLabelIcon(property)}>
+                isRequired={property.required}>
                 {value !== undefined && ["ExpressionDefinition", "ExpressionSubElementDefinition"].includes(property.type)
                     && getExpressionField(property, value)}
                 {property.isObject && !property.isArray && !["ExpressionDefinition", "ExpressionSubElementDefinition"].includes(property.type)
@@ -1183,7 +1092,7 @@ export function DslPropertyField(props: Props) {
                 {beanProperties && getBeanProperties('properties')}
                 {getValidationHelper()}
             </FormGroup>
-            {getInfrastructureSelectorModal()}
+            {getConfigurationSelectorModal()}
         </>
     )
 }

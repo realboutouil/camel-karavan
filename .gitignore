@@ -57,6 +57,7 @@ yarn-error.log*
 **/*.tgz
 **/*.vsix
 **/*.bak
+**/*.env
 
 .quinoa/
 
@@ -76,7 +77,10 @@ yarn-error.log*
 karavan-cloud/karavan-secret-real.yaml
 
 docs/install/karavan-docker/data/*
+docs/install/karavan-docker/config/*
 
 **/dependency-reduced-pom.xml
 
-.env
+# claude
+.claude
+CLAUDE.md

@@ -20,15 +20,16 @@ package org.apache.camel.karavan.scheduler;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.service.NotificationService;
 import org.jboss.resteasy.reactive.server.jaxrs.OutboundSseEventImpl;
 
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class NotificationPingScheduler {
 
-    @Inject
-    NotificationService notificationService;
+    private final NotificationService notificationService;
 
     @Scheduled(every = "30s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     public void ping() {

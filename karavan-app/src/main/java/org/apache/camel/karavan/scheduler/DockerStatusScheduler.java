@@ -22,12 +22,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.docker.DockerUtils;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.model.PodContainerStatus;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,16 +35,14 @@ import java.util.List;
 import static org.apache.camel.karavan.KaravanEvents.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DockerStatusScheduler {
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final KaravanProperties properties;
 
-    @Inject
-    DockerService dockerService;
+    private final DockerService dockerService;
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @Scheduled(every = "{karavan.container.statistics.interval:off}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void collectContainersStatistics() {
@@ -56,6 +54,15 @@ public class DockerStatusScheduler {
         }
     }
 
+    public List<PodContainerStatus> getContainersStatuses() {
+        List<PodContainerStatus> result = new ArrayList<>();
+        dockerService.getAllContainers().forEach(container -> {
+            PodContainerStatus podContainerStatus = DockerUtils.getContainerStatus(container, properties.environment());
+            result.add(podContainerStatus);
+        });
+        return result;
+    }
+
     @Scheduled(every = "{karavan.container.status.interval:off}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void collectContainersStatuses() {
         if (!ConfigService.inKubernetes()) {
@@ -65,14 +72,5 @@ public class DockerStatusScheduler {
             });
             eventBus.publish(CMD_CLEAN_STATUSES, "");
         }
-    }
-
-    public List<PodContainerStatus> getContainersStatuses() {
-        List<PodContainerStatus> result = new ArrayList<>();
-        dockerService.getAllContainers().forEach(container -> {
-            PodContainerStatus podContainerStatus = DockerUtils.getContainerStatus(container, environment);
-            result.add(podContainerStatus);
-        });
-        return result;
     }
 }

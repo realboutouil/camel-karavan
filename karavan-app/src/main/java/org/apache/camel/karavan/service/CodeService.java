@@ -22,16 +22,16 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
-import org.apache.camel.karavan.KaravanConstants;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.docker.DockerComposeConverter;
 import org.apache.camel.karavan.model.*;
 import org.apache.commons.text.StringSubstitutor;
 import org.apache.commons.text.lookup.StringLookup;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.ConfigValue;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -47,10 +47,10 @@ import java.util.stream.Collectors;
 
 import static org.apache.camel.karavan.KaravanConstants.*;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class CodeService {
-
-    private static final Logger LOGGER = Logger.getLogger(CodeService.class.getName());
     public static final String APPLICATION_PROPERTIES_FILENAME = "application.properties";
     public static final String PROPERTY_PROJECT_NAME = "camel.karavan.projectName";
     public static final String PROPERTY_PROJECT_NAME_OLD = "camel.karavan.project-name";
@@ -60,52 +60,64 @@ public class CodeService {
     public static final String MARKDOWN_EXTENSION = ".md";
     public static final String PROJECT_JKUBE_EXTENSION = ".jkube.yaml";
     public static final String PROJECT_DEPLOYMENT_JKUBE_FILENAME = "deployment" + PROJECT_JKUBE_EXTENSION;
-    private static final String TEMPLATES_PATH = "/templates";
-    private static final String CONFIGURATION_PATH = "/configuration";
-    private static final String SERVICES_PATH = "/services";
-    private static final String DOCKER_FOLDER = "/docker/";
-    private static final String KUBERNETES_FOLDER = "/kubernetes/";
     public static final int INTERNAL_PORT = 8080;
-    private static final String BUILDER_POD_FRAGMENT_FILENAME = "builder.pod.jkube.yaml";
-    private static final String BUILDER_COMPOSE_FILENAME = "builder.docker-compose.yaml";
     public static final String BUILD_SCRIPT_FILENAME = "build.sh";
-
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
-
-    @ConfigProperty(name = "karavan.gav")
-    Optional<String> gav;
-
-    @Inject
-    ConfigService configService;
-
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    Vertx vertx;
-
-    List<String> beansTemplates = List.of("database", "messaging");
-
     public static final Map<String, String> DEFAULT_CONTAINER_RESOURCES = Map.of(
             "requests.memory", "256Mi",
             "requests.cpu", "500m",
             "limits.memory", "2048Mi",
             "limits.cpu", "2000m"
     );
+    private static final String TEMPLATES_PATH = "/templates";
+    private static final String CONFIGURATION_PATH = "/configuration";
+    private static final String SERVICES_PATH = "/services";
+    private static final String DOCKER_FOLDER = "/docker/";
+    private static final String KUBERNETES_FOLDER = "/kubernetes/";
+    private static final String BUILDER_POD_FRAGMENT_FILENAME = "builder.pod.jkube.yaml";
+    private static final String BUILDER_COMPOSE_FILENAME = "builder.docker-compose.yaml";
+    final KaravanProperties properties;
+    final ConfigService configService;
+    final KaravanCache karavanCache;
+    final Vertx vertx;
+    List<String> beansTemplates = List.of("database", "messaging");
+
+    public static String getPropertyName(String line) {
+        var parts = line.indexOf("=");
+        return line.substring(0, parts).trim();
+    }
+
+    public static String replaceProperty(String file, String property, String value) {
+        return file.lines().map(line -> {
+            if (line.startsWith(property)) {
+                return property + "=" + value;
+            } else {
+                return line;
+            }
+        }).collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    public static String removePropertiesStartWith(String file, String startWith) {
+        return file.lines().filter(line -> !line.startsWith(startWith))
+                .collect(Collectors.joining(System.lineSeparator()));
+    }
 
     public String getProjectDevModeImage(String projectId) {
         try {
             ProjectFile appProp = getApplicationProperties(projectId);
             return getPropertyValue(appProp.getCode(), DEVMODE_IMAGE);
         } catch (Exception e) {
-            LOGGER.error("getProjectDevModeImage " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+            log.error("getProjectDevModeImage " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
             return null;
         }
     }
 
     private ProjectFile getApplicationProperties(String projectId) {
         return karavanCache.getProjectFile(projectId, APPLICATION_PROPERTIES_FILENAME);
+    }
+
+    public String getPropertyValue(String propFileText, String key) {
+        Optional<String> data = propFileText.lines().filter(p -> p.startsWith(key)).findFirst();
+        return data.map(s -> s.split("=")[1]).orElse(null);
     }
 
     public Map<String, String> getProjectFilesForDevMode(String projectId, Boolean withKamelets) {
@@ -143,13 +155,49 @@ public class CodeService {
     public String getBuilderComposeFragment(String projectId, String tag) {
         ProjectFile projectFile = karavanCache.getProjectFile(Project.Type.configuration.name(), BUILDER_COMPOSE_FILENAME);
         var code = projectFile != null ? projectFile.getCode() : null;
-        var code2 = substituteVariables(code, Map.of( "projectId", projectId, "tag", tag));
+        var code2 = substituteVariables(code, Map.of("projectId", projectId, "tag", tag));
         return replaceEnvWithRuntimeProperties(code2);
     }
 
     public String substituteVariables(String template, Map<String, String> variables) {
         StringSubstitutor sub = new StringSubstitutor(variables);
         return sub.replace(template);
+    }
+
+    public String replaceEnvWithRuntimeProperties(String composeCode) {
+        Map<String, String> env = new HashMap<>();
+        findVariables(composeCode).forEach(envName -> {
+            String envValue = getConfigValue(envName);
+            env.put(envName, envValue);
+        });
+        return substituteVariables(composeCode, env);
+    }
+
+    private static Set<String> findVariables(String template) {
+        Set<String> variables = new HashSet<>();
+
+        StringLookup dummyLookup = key -> {
+            variables.add(key);
+            return null; // Return null because we are only interested in collecting variable names
+        };
+
+        StringSubstitutor s = new StringSubstitutor(dummyLookup);
+        s.replace(template);
+
+        return variables;
+    }
+
+    private String getConfigValue(String envName) {
+        ConfigValue val = ConfigProvider.getConfig().getConfigValue(envName);
+        if (val == null) {
+            var canonicalName = toEnvFormat(envName);
+            val = ConfigProvider.getConfig().getConfigValue(canonicalName);
+        }
+        return val != null ? val.getValue() : System.getProperty(envName, null);
+    }
+
+    private static String toEnvFormat(String input) {
+        return input.replaceAll("[^a-zA-Z0-9]", "_").toUpperCase();
     }
 
     public ProjectFile generateApplicationProperties(Project project) {
@@ -160,6 +208,18 @@ public class CodeService {
                 "packageSuffix", project.getGavPackageSuffix()
         ));
         return new ProjectFile(APPLICATION_PROPERTIES_FILENAME, code, project.getProjectId(), Instant.now().toEpochMilli());
+    }
+
+    public String getTemplateText(String fileName) {
+        try {
+            List<ProjectFile> files = karavanCache.getProjectFiles(Project.Type.templates.name());
+            // replaceAll("\r\n", "\n")) has been add to eliminate the impact of editing the template files from windows machine.
+            return files.stream().filter(f -> f.getName().equalsIgnoreCase(fileName))
+                    .map(file -> file.getCode().replaceAll("\r\n", "\n")).findFirst().orElse(null);
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
+        return null;
     }
 
     public String saveProjectFilesInTemp(Map<String, String> files) {
@@ -173,12 +233,12 @@ public class CodeService {
             String path = temp + File.separator + fileName;
             vertx.fileSystem().writeFileBlocking(path, Buffer.buffer(code));
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
         }
     }
 
     public String getBuilderScript() {
-        String envTemplate = getConfigurationText(environment + "." + BUILD_SCRIPT_FILENAME);
+        String envTemplate = getConfigurationText(properties.environment() + "." + BUILD_SCRIPT_FILENAME);
         return envTemplate != null ? envTemplate : getConfigurationText(BUILD_SCRIPT_FILENAME);
     }
 
@@ -187,21 +247,9 @@ public class CodeService {
             List<ProjectFile> files = karavanCache.getProjectFiles(Project.Type.configuration.name());
             // replaceAll("\r\n", "\n")) has been add to eliminate the impact of editing the template files from windows machine.
             return files.stream().filter(f -> f.getName().equalsIgnoreCase(fileName))
-                    .map(file-> file.getCode().replaceAll("\r\n", "\n")).findFirst().orElse(null);
+                    .map(file -> file.getCode().replaceAll("\r\n", "\n")).findFirst().orElse(null);
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
-        }
-        return null;
-    }
-
-    public String getTemplateText(String fileName) {
-        try {
-            List<ProjectFile> files = karavanCache.getProjectFiles(Project.Type.templates.name());
-            // replaceAll("\r\n", "\n")) has been add to eliminate the impact of editing the template files from windows machine.
-            return files.stream().filter(f -> f.getName().equalsIgnoreCase(fileName))
-                    .map(file-> file.getCode().replaceAll("\r\n", "\n")).findFirst().orElse(null);
-        } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
         }
         return null;
     }
@@ -219,6 +267,47 @@ public class CodeService {
             }
         });
         return result;
+    }
+
+    public List<String> listResources(String resourceFolder) {
+        List<String> result = new ArrayList<>();
+        try {
+            URI uri = Objects.requireNonNull(ConfigService.class.getResource(resourceFolder)).toURI();
+            Path myPath;
+            FileSystem fileSystem = null;
+            if (uri.getScheme().equals("jar")) {
+                fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap());
+                myPath = fileSystem.getPath(resourceFolder);
+            } else {
+                myPath = Paths.get(uri);
+            }
+
+            try (var pathsStream = Files.walk(myPath, 10)) {
+                pathsStream
+                        .filter(Files::isRegularFile)
+                        .map(path -> path.getFileName().toString())
+                        .forEach(result::add);
+            } catch (IOException e) {
+                var error = e.getCause() != null ? e.getCause() : e;
+                log.error("IOException", error);
+            }
+            if (fileSystem != null) {
+                fileSystem.close();
+            }
+        } catch (URISyntaxException | IOException e) {
+            var error = e.getCause() != null ? e.getCause() : e;
+            log.error("URISyntaxException | IOException", error);
+        }
+        return result;
+    }
+
+    public String getResourceFile(String path) {
+        try (InputStream inputStream = CodeService.class.getResourceAsStream(path);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public Map<String, String> getConfigurationFiles() {
@@ -261,20 +350,6 @@ public class CodeService {
         return listResources(path);
     }
 
-    public String getResourceFile(String path) {
-        try (InputStream inputStream = CodeService.class.getResourceAsStream(path);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-             return reader.lines().collect(Collectors.joining(System.lineSeparator()));
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    public String getPropertyValue(String propFileText, String key) {
-        Optional<String> data = propFileText.lines().filter(p -> p.startsWith(key)).findFirst();
-        return data.map(s -> s.split("=")[1]).orElse(null);
-    }
-
     private ObjectNode readNodeFromJson(String openApi) throws Exception {
         final ObjectMapper mapper = new ObjectMapper();
         return (ObjectNode) mapper.readTree(openApi);
@@ -289,7 +364,7 @@ public class CodeService {
 
     public String getPropertiesFile(GitRepo repo) {
         try {
-            for (GitRepoFile e : repo.getFiles()){
+            for (GitRepoFile e : repo.getFiles()) {
                 if (e.getName().equalsIgnoreCase(APPLICATION_PROPERTIES_FILENAME)) {
                     return e.getBody();
                 }
@@ -300,36 +375,16 @@ public class CodeService {
         return null;
     }
 
-    public static String getProperty(String file, String property) {
-        String prefix = property + "=";
-        return  Arrays.stream(file.split(System.lineSeparator())).filter(s -> s.startsWith(prefix))
-                .findFirst().orElseGet(() -> "")
-                .replace(prefix, "");
-    }
-
-    public static String getPropertyName(String line) {
-        var parts = line.indexOf("=");
-        return line.substring(0, parts).trim();
-    }
-
     public String getProjectName(String file) {
         String name = getProperty(file, PROPERTY_PROJECT_NAME);
         return name != null && !name.isBlank() ? name : getProperty(file, PROPERTY_PROJECT_NAME_OLD);
     }
 
-    public static String replaceProperty(String file, String property, String value) {
-        return file.lines().map(line -> {
-            if (line.startsWith(property)) {
-                return property + "=" + value;
-            } else {
-                return line;
-            }
-        }).collect(Collectors.joining(System.lineSeparator()));
-    }
-
-    public static String removePropertiesStartWith(String file, String startWith) {
-        return file.lines().filter(line -> !line.startsWith(startWith))
-                .collect(Collectors.joining(System.lineSeparator()));
+    public static String getProperty(String file, String property) {
+        String prefix = property + "=";
+        return Arrays.stream(file.split(System.lineSeparator())).filter(s -> s.startsWith(prefix))
+                .findFirst().orElseGet(() -> "")
+                .replace(prefix, "");
     }
 
     public ProjectFile createInitialProjectCompose(Project project, int nextAvailablePort) {
@@ -347,6 +402,11 @@ public class CodeService {
         return new ProjectFile(PROJECT_DEPLOYMENT_JKUBE_FILENAME, template, project.getProjectId(), Instant.now().toEpochMilli());
     }
 
+    public Integer getProjectPort(String projectId) {
+        ProjectFile composeFile = karavanCache.getProjectFile(projectId, PROJECT_COMPOSE_FILENAME);
+        return getProjectPort(composeFile);
+    }
+
     public Integer getProjectPort(ProjectFile composeFile) {
         if (composeFile != null) {
             DockerComposeService dcs = DockerComposeConverter.fromCode(composeFile.getCode(), composeFile.getProjectId());
@@ -357,15 +417,10 @@ public class CodeService {
         return null;
     }
 
-    public Integer getProjectPort(String projectId) {
-        ProjectFile composeFile = karavanCache.getProjectFile(projectId, PROJECT_COMPOSE_FILENAME);
-        return getProjectPort(composeFile);
-    }
-
     public String getDockerComposeFileForProject(String projectId) {
         String composeFileName = PROJECT_COMPOSE_FILENAME;
-        if (!Objects.equals(environment, DEV)) {
-            composeFileName = environment + "." + PROJECT_COMPOSE_FILENAME;
+        if (!Objects.equals(properties.environment(), DEV)) {
+            composeFileName = properties.environment() + "." + PROJECT_COMPOSE_FILENAME;
         }
         ProjectFile compose = karavanCache.getProjectFile(projectId, composeFileName);
         if (compose != null) {
@@ -385,80 +440,12 @@ public class CodeService {
         }
     }
 
-    public String replaceEnvWithRuntimeProperties(String composeCode) {
-        Map<String, String> env = new HashMap<>();
-        findVariables(composeCode).forEach(envName -> {
-            String envValue = getConfigValue(envName);
-            env.put(envName, envValue);
-        });
-        return substituteVariables(composeCode, env);
-    }
-
-    private String getConfigValue(String envName) {
-        ConfigValue val = ConfigProvider.getConfig().getConfigValue(envName);
-        if (val == null) {
-            var canonicalName = toEnvFormat(envName);
-            val = ConfigProvider.getConfig().getConfigValue(canonicalName);
-        }
-        return val != null? val.getValue() : System.getProperty(envName, null);
-    }
-
-    private static String toEnvFormat(String input) {
-        return input.replaceAll("[^a-zA-Z0-9]", "_").toUpperCase();
-    }
-
-    private static Set<String> findVariables(String template) {
-        Set<String> variables = new HashSet<>();
-
-        StringLookup dummyLookup = key -> {
-            variables.add(key);
-            return null; // Return null because we are only interested in collecting variable names
-        };
-
-        StringSubstitutor s = new StringSubstitutor(dummyLookup);
-        s.replace(template);
-
-        return variables;
-    }
-
     private List<String> getEnvironmentVariablesFromString(String file) {
         List<String> vars = new ArrayList<>();
         if (file != null) {
             vars = file.lines().collect(Collectors.toList());
         }
         return vars;
-    }
-
-    public List<String> listResources(String resourceFolder) {
-        List<String> result = new ArrayList<>();
-        try {
-            URI uri = Objects.requireNonNull(ConfigService.class.getResource(resourceFolder)).toURI();
-            Path myPath;
-            FileSystem fileSystem = null;
-            if (uri.getScheme().equals("jar")) {
-                fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap());
-                myPath = fileSystem.getPath(resourceFolder);
-            } else {
-                myPath = Paths.get(uri);
-            }
-
-            try (var pathsStream = Files.walk(myPath, 10)) {
-                pathsStream
-                        .filter(Files::isRegularFile)
-                        .map(path -> path.getFileName().toString())
-                        .forEach(result::add);
-            } catch (IOException e) {
-                var error = e.getCause() != null ? e.getCause() : e;
-                LOGGER.error("IOException", error);
-            }
-            if (fileSystem != null) {
-                fileSystem.close();
-            }
-        } catch (URISyntaxException | IOException e) {
-            var error = e.getCause() != null ? e.getCause() : e;
-            LOGGER.error("URISyntaxException | IOException", error);
-        }
-        return result;
     }
 
     public String getFileString(String fullName) {
@@ -470,6 +457,6 @@ public class CodeService {
     }
 
     public String getGav() {
-        return gav.orElse("org.camel.karavan.demo") + ":%s:1";
+        return properties.gav().orElse("org.camel.karavan.demo") + ":%s:1";
     }
 }

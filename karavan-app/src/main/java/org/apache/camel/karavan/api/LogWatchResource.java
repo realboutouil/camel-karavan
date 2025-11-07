@@ -30,34 +30,31 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.docker.DockerLogCallback;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
 import org.apache.camel.karavan.service.ConfigService;
 import org.apache.camel.karavan.service.NotificationService;
 import org.eclipse.microprofile.context.ManagedExecutor;
-import org.jboss.logging.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 @Path("/ui/logwatch")
 public class LogWatchResource {
 
-    private static final Logger LOGGER = Logger.getLogger(LogWatchResource.class.getName());
     private static final String SERVICE_NAME = "LOGWATCH";
     private static final ConcurrentHashMap<String, Tuple2<LogWatch, KubernetesClient>> logWatches = new ConcurrentHashMap<>();
 
-    @Inject
-    KubernetesService kubernetesService;
-
-    @Inject
-    DockerService dockerService;
-
-    @Inject
-    NotificationService notificationService;
+    private final KubernetesService kubernetesService;
+    private final DockerService dockerService;
+    private final NotificationService notificationService;
 
     @Inject
     @ManagedExecutorConfig()
@@ -74,30 +71,13 @@ public class LogWatchResource {
                               @Context Sse sse) {
         notificationService.sinkCleanup(SERVICE_NAME + ":" + type + ":" + name, username, eventSink);
         managedExecutor.execute(() -> {
-            LOGGER.info("LogWatch for " + name + " starting... ");
+            log.info("LogWatch for " + name + " starting... ");
             if (ConfigService.inKubernetes()) {
                 getKubernetesLogs(name, username, eventSink, sse);
             } else {
                 getDockerLogs(type, name, eventSink, sse);
             }
         });
-    }
-
-    private void getDockerLogs(String type, String name, SseEventSink eventSink, Sse sse) {
-        LOGGER.info("LogCallback for " + name + " starting");
-        try (SseEventSink sink = eventSink) {
-            DockerLogCallback dockerLogCallback = new DockerLogCallback(line -> {
-                if (!sink.isClosed()) {
-                    sink.send(sse.newEvent(line));
-                }
-            });
-            dockerService.logContainer(name, dockerLogCallback);
-            dockerLogCallback.close();
-            sink.close();
-            LOGGER.info("LogCallback for " + name + " closed");
-        } catch (Exception e) {
-            LOGGER.error(e.getMessage());
-        }
     }
 
     private void getKubernetesLogs(String name, String username, SseEventSink eventSink, Sse sse) {
@@ -111,12 +91,29 @@ public class LogWatchResource {
                     sink.send(sse.newEvent(line));
                 }
             } catch (IOException e) {
-                LOGGER.error(e.getMessage());
+                log.error(e.getMessage());
             }
             logWatch.close();
             request.getItem2().close();
             sink.close();
-            LOGGER.info("LogWatch for " + name + " closed");
+            log.info("LogWatch for " + name + " closed");
+        }
+    }
+
+    private void getDockerLogs(String type, String name, SseEventSink eventSink, Sse sse) {
+        log.info("LogCallback for " + name + " starting");
+        try (SseEventSink sink = eventSink) {
+            DockerLogCallback dockerLogCallback = new DockerLogCallback(line -> {
+                if (!sink.isClosed()) {
+                    sink.send(sse.newEvent(line));
+                }
+            });
+            dockerService.logContainer(name, dockerLogCallback);
+            dockerLogCallback.close();
+            sink.close();
+            log.info("LogCallback for " + name + " closed");
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
@@ -128,7 +125,7 @@ public class LogWatchResource {
                 lw.getItem1().close();
                 lw.getItem2().close();
             } catch (Exception e) {
-                LOGGER.error(e.getMessage());
+                log.error(e.getMessage());
             }
         }
         logWatches.put(key, logWatch);

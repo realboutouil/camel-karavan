@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 import React, {useEffect, useState} from 'react';
-import {Badge, Button, capitalize, Flex, FlexItem, Modal, Text, TextContent, TextInput, ToggleGroup, ToggleGroupItem,} from '@patternfly/react-core';
+import {Badge, Button, capitalize, Flex, FlexItem, Modal, TextInput, ToggleGroup, ToggleGroupItem} from '@patternfly/react-core';
+import {Text, TextContent} from '../../utils/PatternFlyCompat';
 import '../../karavan.css';
 import {InnerScrollContainer, OuterScrollContainer, Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 import {InfrastructureAPI} from "../../utils/InfrastructureAPI";
@@ -320,7 +321,7 @@ export function ConfigurationSelectorModal(props: Props) {
                     </FlexItem>
                 </Flex>
             }
-            actions={{}}>
+            actions={[]}>
             <React.Fragment>
                 {tabIndex === 'configMap' && getConfigMapTable()}
                 {tabIndex === 'secret' && getSecretsTable()}

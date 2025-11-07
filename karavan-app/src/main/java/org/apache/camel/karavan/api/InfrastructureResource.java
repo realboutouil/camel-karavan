@@ -21,16 +21,14 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.KaravanConstants;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
-import org.apache.camel.karavan.model.ContainerType;
-import org.apache.camel.karavan.model.DeploymentStatus;
-import org.apache.camel.karavan.model.ProjectFile;
-import org.apache.camel.karavan.model.ServiceStatus;
+import org.apache.camel.karavan.model.*;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.util.Comparator;
 import java.util.List;
@@ -42,22 +40,15 @@ import static org.apache.camel.karavan.KaravanConstants.KUBERNETES_YAML_FILENAME
 import static org.apache.camel.karavan.KaravanConstants.LABEL_TYPE;
 import static org.apache.camel.karavan.KaravanEvents.CMD_RESTART_INFORMERS;
 
+@Slf4j
 @Path("/ui/infrastructure")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class InfrastructureResource {
 
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    KubernetesService kubernetesService;
-
-    @Inject
-    EventBus eventBus;
-
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
-
-    private static final Logger LOGGER = Logger.getLogger(InfrastructureResource.class.getName());
+    private final KaravanCache karavanCache;
+    private final KubernetesService kubernetesService;
+    private final EventBus eventBus;
+    private final KaravanProperties properties;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -89,7 +80,7 @@ public class InfrastructureResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/deployment/start/{env}/{projectId}")
     public Response start(@PathParam("env") String env, @PathParam("projectId") String projectId) throws Exception {
-        var name = Objects.equals(environment, KaravanConstants.DEV) ? KUBERNETES_YAML_FILENAME : environment + "." + KUBERNETES_YAML_FILENAME;
+        var name = Objects.equals(properties.environment(), KaravanConstants.DEV) ? KUBERNETES_YAML_FILENAME : properties.environment() + "." + KUBERNETES_YAML_FILENAME;
         ProjectFile resources = karavanCache.getProjectFile(projectId, name);
         if (resources == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("Resource file " + KUBERNETES_YAML_FILENAME + " not found").build();
@@ -145,7 +136,7 @@ public class InfrastructureResource {
         if (ConfigService.inKubernetes()) {
             return Response.ok(kubernetesService.getServices(kubernetesService.getNamespace())).build();
         } else {
-            List<String> list = karavanCache.getPodContainerStatuses(environment).stream()
+            List<String> list = karavanCache.getPodContainerStatuses(properties.environment()).stream()
                     .filter(ci -> ci.getPorts() != null && !ci.getPorts().isEmpty())
                     .map(ci -> ci.getPorts().stream().map(i -> ci.getContainerName() + "|" + ci.getContainerName() + ":" + i.getPrivatePort()).collect(Collectors.toList()))
                     .flatMap(List::stream).collect(Collectors.toList());

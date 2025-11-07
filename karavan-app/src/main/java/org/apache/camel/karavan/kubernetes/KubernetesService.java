@@ -28,14 +28,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.model.ContainerType;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.model.KubernetesConfigMap;
 import org.apache.camel.karavan.model.KubernetesSecret;
 import org.apache.camel.karavan.service.CodeService;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -45,51 +45,19 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.camel.karavan.KaravanConstants.*;
 import static org.apache.camel.karavan.service.CodeService.BUILD_SCRIPT_FILENAME;
 
+@Slf4j
 @Default
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class KubernetesService {
 
-    private static final Logger LOGGER = Logger.getLogger(KubernetesService.class.getName());
-
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    private String environment;
-
-    @Inject
-    CodeService codeService;
+    private final KaravanProperties properties;
+    private final CodeService codeService;
 
     private String namespace;
 
-    @Produces
-    public KubernetesClient kubernetesClient() {
-        return new KubernetesClientBuilder().build();
-    }
-
-    @ConfigProperty(name = DEVMODE_IMAGE)
-    String devmodeImage;
-
-    @ConfigProperty(name = DEVMODE_IMAGE_PULL_POLICY, defaultValue = "IfNotPresent")
-    Optional<String> devmodeImagePullPolicy;
-
-    @ConfigProperty(name = "karavan.devmode.service.account")
-    String devModeServiceAccount;
-
-    @ConfigProperty(name = "karavan.devmode.createm2", defaultValue = "false")
-    Optional<Boolean> devmodePVC;
-
-    @ConfigProperty(name = "karavan.builder.service.account")
-    String builderServiceAccount;
-
-    @ConfigProperty(name = "karavan.secret.name", defaultValue = "karavan")
-    String secretName;
-
-    @ConfigProperty(name = "karavan.private-key-path")
-    Optional<String> privateKeyPath;
-
-    @ConfigProperty(name = "karavan.openshift")
-    Optional<Boolean> isOpenShift;
-
     public void createConfigmap(String name, Map<String, String> data) {
-        LOGGER.info("Creating configmap " + name);
+        log.info("Creating configmap " + name);
         if (ConfigService.inKubernetes()) {
             try (KubernetesClient client = kubernetesClient()) {
                 ConfigMap configMap = client.configMaps().inNamespace(getNamespace()).withName(name).get();
@@ -109,9 +77,29 @@ public class KubernetesService {
                 }
 
             } catch (Exception e) {
-                LOGGER.error("Error create Configmap: " + e.getMessage());
+                log.error("Error create Configmap: " + e.getMessage());
             }
         }
+    }
+
+    @Produces
+    public KubernetesClient kubernetesClient() {
+        return new KubernetesClientBuilder().build();
+    }
+
+    public String getNamespace() {
+        if (namespace == null) {
+            try (KubernetesClient client = kubernetesClient()) {
+                namespace = LaunchMode.current().getProfileKey().equalsIgnoreCase("dev") ? "karavan" : client.getNamespace();
+            }
+        }
+        return namespace;
+    }
+
+    public Map<String, String> getPartOfLabels() {
+        Map<String, String> labels = new HashMap<>();
+        labels.put(LABEL_PART_OF, properties.appName());
+        return labels;
     }
 
     public void runBuildProject(String projectId, String podFragment) {
@@ -128,9 +116,9 @@ public class KubernetesService {
             Pod pod = getBuilderPod(containerName, labels, podFragment, hasDockerConfigSecret);
             Pod result = client.resource(pod).create();
 
-            LOGGER.info("Created pod " + result.getMetadata().getName());
+            log.info("Created pod " + result.getMetadata().getName());
         } catch (Exception e) {
-            LOGGER.error("Error creating build container: " + e.getMessage());
+            log.error("Error creating build container: " + e.getMessage());
         }
     }
 
@@ -151,13 +139,7 @@ public class KubernetesService {
 
     private Map<String, String> getRuntimeLabels() {
         Map<String, String> labels = new HashMap<>();
-        labels.put(isOpenshift() ? "app.openshift.io/runtime" : "app.kubernetes.io/runtime", CAMEL_PREFIX);
-        return labels;
-    }
-
-    public Map<String, String> getPartOfLabels() {
-        Map<String, String> labels = new HashMap<>();
-        labels.put(LABEL_PART_OF, ConfigService.getAppName());
+        labels.put(properties.openshift().orElse(false) ? "app.openshift.io/runtime" : "app.kubernetes.io/runtime", CAMEL_PREFIX);
         return labels;
     }
 
@@ -180,7 +162,7 @@ public class KubernetesService {
         if (hasDockerConfigSecret) {
             volumeMounts.add(new VolumeMountBuilder().withName(BUILD_DOCKER_CONFIG_SECRET).withMountPath("/karavan/.docker").withReadOnly(true).build());
         }
-        if (privateKeyPath.isPresent()) {
+        if (properties.privateKeyPath().isPresent()) {
             volumeMounts.add(new VolumeMountBuilder().withName(PRIVATE_KEY_SECRET_KEY).withMountPath("/karavan/.ssh/id_rsa").withSubPath("id_rsa").withReadOnly(true).build());
             volumeMounts.add(new VolumeMountBuilder().withName(KNOWN_HOSTS_SECRET_KEY).withMountPath("/karavan/.ssh/known_hosts").withSubPath("known_hosts").withReadOnly(true).build());
         }
@@ -191,9 +173,9 @@ public class KubernetesService {
 
         Container container = new ContainerBuilder()
                 .withName(name)
-                .withImage(devmodeImage)
+                .withImage(properties.devmode().image())
                 .withPorts(port)
-                .withImagePullPolicy(devmodeImagePullPolicy.orElse("IfNotPresent"))
+                .withImagePullPolicy(properties.devmode().imagePullPolicy())
                 .withEnv(pod.getSpec().getContainers().get(0).getEnv())
                 .withCommand("/bin/sh", "-c", "/karavan/builder/build.sh")
                 .withVolumeMounts(volumeMounts)
@@ -210,13 +192,13 @@ public class KubernetesService {
                             new KeyToPathBuilder().withKey(".dockerconfigjson").withPath("config.json").build()
                     ).withDefaultMode(511).build()).build());
         }
-        if (privateKeyPath.isPresent()) {
+        if (properties.privateKeyPath().isPresent()) {
             volumes.add(new VolumeBuilder().withName(PRIVATE_KEY_SECRET_KEY)
-                    .withSecret(new SecretVolumeSourceBuilder().withSecretName(secretName).withItems(
+                    .withSecret(new SecretVolumeSourceBuilder().withSecretName(properties.secretName()).withItems(
                             new KeyToPathBuilder().withKey(PRIVATE_KEY_SECRET_KEY).withPath("id_rsa").build()
                     ).withDefaultMode(511).build()).build());
             volumes.add(new VolumeBuilder().withName(KNOWN_HOSTS_SECRET_KEY)
-                    .withSecret(new SecretVolumeSourceBuilder().withSecretName(secretName).withItems(
+                    .withSecret(new SecretVolumeSourceBuilder().withSecretName(properties.secretName()).withItems(
                             new KeyToPathBuilder().withKey(KNOWN_HOSTS_SECRET_KEY).withPath("known_hosts").build()
                     ).withDefaultMode(511).build()).build());
         }
@@ -225,7 +207,7 @@ public class KubernetesService {
                 .withTerminationGracePeriodSeconds(0L)
                 .withContainers(container)
                 .withRestartPolicy("Never")
-                .withServiceAccount(builderServiceAccount)
+                .withServiceAccount(properties.builder().serviceAccount())
                 .withVolumes(volumes)
                 .build();
 
@@ -239,7 +221,7 @@ public class KubernetesService {
         try (KubernetesClient client = kubernetesClient()) {
             return client.secrets().inNamespace(getNamespace()).withName(BUILD_DOCKER_CONFIG_SECRET).get() != null;
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
             return false;
         }
     }
@@ -254,7 +236,7 @@ public class KubernetesService {
         try (KubernetesClient client = kubernetesClient()) {
             client.apps().deployments().inNamespace(getNamespace()).withName(name).rolling().restart();
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
         }
     }
 
@@ -262,7 +244,7 @@ public class KubernetesService {
         try (KubernetesClient client = kubernetesClient()) {
             KubernetesList list = Serialization.unmarshal(resources, KubernetesList.class);
             list.getItems().forEach(item -> {
-                if (labels != null ) {
+                if (labels != null) {
                     item.getMetadata().getLabels().putAll(labels);
                     if (item instanceof Deployment deployment) {
                         deployment.getSpec().getTemplate().getMetadata().getLabels().putAll(labels);
@@ -271,26 +253,26 @@ public class KubernetesService {
                 client.resource(item).inNamespace(getNamespace()).serverSideApply();
             });
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
         }
     }
 
     public void deleteDeployment(String name) {
         try (KubernetesClient client = kubernetesClient()) {
-            LOGGER.info("Delete deployment: " + name + " in the namespace: " + getNamespace());
+            log.info("Delete deployment: " + name + " in the namespace: " + getNamespace());
             client.apps().deployments().inNamespace(getNamespace()).withName(name).delete();
             client.services().inNamespace(getNamespace()).withName(name).delete();
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
         }
     }
 
     public void deletePod(String name) {
         try (KubernetesClient client = kubernetesClient()) {
-            LOGGER.info("Delete pod: " + name);
+            log.info("Delete pod: " + name);
             client.pods().inNamespace(getNamespace()).withName(name).delete();
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
         }
     }
 
@@ -304,7 +286,7 @@ public class KubernetesService {
                 }
             });
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
         }
         return result;
     }
@@ -319,7 +301,7 @@ public class KubernetesService {
                 }
             });
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
         }
         return result;
     }
@@ -333,7 +315,7 @@ public class KubernetesService {
                 service.getSpec().getPorts().forEach(port -> result.add(name + "|" + host + ":" + port.getPort()));
             });
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
         }
         return result;
     }
@@ -343,7 +325,7 @@ public class KubernetesService {
         podLabels.putAll(getLabels(projectId, projectId, ContainerType.devmode));
 
         try (KubernetesClient client = kubernetesClient()) {
-            if (devmodePVC.orElse(false)) {
+            if (properties.devmode().createM2()) {
                 createPVC(projectId, labels);
             }
             Pod old = client.pods().inNamespace(getNamespace()).withName(projectId).get();
@@ -351,12 +333,12 @@ public class KubernetesService {
                 Pod pod = getDevModePod(projectId, verbose, compile, podLabels, projectDevmodeImage, deploymentFragment, envVars);
                 Pod result = client.resource(pod).serverSideApply(); // important
                 result = client.pods().inNamespace(getNamespace()).withName(projectId).waitUntilReady(30, TimeUnit.SECONDS);
-                LOGGER.info("Pod " + result.getMetadata().getName() + " status " + result.getStatus());
+                log.info("Pod " + result.getMetadata().getName() + " status " + result.getStatus());
                 var copyFiles = copyFilesToContainer(result, files, "/karavan/code");
-                LOGGER.info("Pod files copy result is " + copyFiles);
+                log.info("Pod files copy result is " + copyFiles);
                 var copyDone = copyFilesToContainer(result, Map.of(".karavan.done", "done"), "/tmp");
-                LOGGER.info("Pod files copy done is " + copyDone);
-                LOGGER.info("Pod pod " + result.getMetadata().getName());
+                log.info("Pod files copy done is " + copyDone);
+                log.info("Pod pod " + result.getMetadata().getName());
             }
         }
         createService(projectId, podLabels);
@@ -370,21 +352,21 @@ public class KubernetesService {
                     .dir(dirName)
                     .upload(Paths.get(temp));
         } catch (Exception e) {
-            LOGGER.info("Error copying filed to devmode pod: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+            log.info("Error copying filed to devmode pod: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
             return false;
         }
     }
 
     public void deletePodAndService(String name, boolean deletePVC) {
         try (KubernetesClient client = kubernetesClient()) {
-            LOGGER.info("Delete pod/service: " + name + " in the namespace: " + getNamespace());
+            log.info("Delete pod/service: " + name + " in the namespace: " + getNamespace());
             client.pods().inNamespace(getNamespace()).withName(name).delete();
             client.services().inNamespace(getNamespace()).withName(name).delete();
             if (deletePVC) {
                 client.persistentVolumeClaims().inNamespace(getNamespace()).withName(name).delete();
             }
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
         }
     }
 
@@ -409,7 +391,8 @@ public class KubernetesService {
         List<VolumeMount> volumeMounts = new ArrayList<>();
         try {
             volumeMounts = podSpec.getContainers().get(0).getVolumeMounts();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         Map<String, String> containerResources = CodeService.DEFAULT_CONTAINER_RESOURCES;
         ResourceRequirements resources = getResourceRequirements(containerResources);
@@ -429,7 +412,8 @@ public class KubernetesService {
         List<EnvVar> environmentVariables = new ArrayList<>();
         try {
             environmentVariables = new ArrayList<>(podSpec.getContainers().get(0).getEnv());
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         for (Map.Entry<String, String> entry : envVars.entrySet()) {
             String k = entry.getKey();
@@ -445,10 +429,10 @@ public class KubernetesService {
 
         Container container = new ContainerBuilder()
                 .withName(name)
-                .withImage(projectDevmodeImage != null ? projectDevmodeImage : devmodeImage)
+                .withImage(projectDevmodeImage != null ? projectDevmodeImage : properties.devmode().image())
                 .withPorts(port)
                 .withResources(resources)
-                .withImagePullPolicy(devmodeImagePullPolicy.orElse("IfNotPresent"))
+                .withImagePullPolicy(properties.devmode().imagePullPolicy())
                 .withEnv(environmentVariables)
                 .withVolumeMounts(volumeMounts)
                 .build();
@@ -456,8 +440,8 @@ public class KubernetesService {
         podSpec.setTerminationGracePeriodSeconds(0L);
         podSpec.setContainers(List.of(container));
         podSpec.setRestartPolicy("Never");
-        podSpec.setServiceAccount(devModeServiceAccount);
-        if (devmodePVC.orElse(false)) {
+        podSpec.setServiceAccount(properties.devmode().serviceAccount());
+        if (properties.devmode().createM2()) {
             podSpec.getVolumes().add(new VolumeBuilder().withName(name).withNewPersistentVolumeClaim(name, false).build());
         }
 
@@ -539,29 +523,15 @@ public class KubernetesService {
         }
     }
 
-    public Secret getSecret(String name) {
-        try (KubernetesClient client = kubernetesClient()) {
-            return client.secrets().inNamespace(getNamespace()).withName(name).get();
-        }
-    }
-
     public Secret getKaravanSecret() {
         try (KubernetesClient client = kubernetesClient()) {
-            return client.secrets().inNamespace(getNamespace()).withName(secretName).get();
+            return client.secrets().inNamespace(getNamespace()).withName(properties.secretName()).get();
         }
     }
 
     public String getKaravanSecret(String key) {
         try (KubernetesClient client = kubernetesClient()) {
-            Secret secret = client.secrets().inNamespace(getNamespace()).withName(secretName).get();
-            Map<String, String> data = secret.getData();
-            return decodeSecret(data.get(key));
-        }
-    }
-
-    public String getSecret(String name, String key) {
-        try (KubernetesClient client = kubernetesClient()) {
-            Secret secret = client.secrets().inNamespace(getNamespace()).withName(name).get();
+            Secret secret = client.secrets().inNamespace(getNamespace()).withName(properties.secretName()).get();
             Map<String, String> data = secret.getData();
             return decodeSecret(data.get(key));
         }
@@ -574,39 +544,26 @@ public class KubernetesService {
         return null;
     }
 
-    public ConfigMap getConfigMap(String name) {
+    public String getSecret(String name, String key) {
         try (KubernetesClient client = kubernetesClient()) {
-            return client.configMaps().inNamespace(getNamespace()).withName(name).get();
+            Secret secret = client.secrets().inNamespace(getNamespace()).withName(name).get();
+            Map<String, String> data = secret.getData();
+            return decodeSecret(data.get(key));
         }
     }
 
     public boolean isOpenshift() {
-        return isOpenShift.isPresent() && isOpenShift.get();
-    }
-
-    public String getNamespace() {
-        if (namespace == null) {
-            try (KubernetesClient client = kubernetesClient()) {
-                namespace = LaunchMode.current().getProfileKey().equalsIgnoreCase("dev") ? "karavan" : client.getNamespace();
-            }
-        }
-        return namespace;
-    }
-
-    public void updateSecret(Secret secret) {
-        try (KubernetesClient client = kubernetesClient()) {
-            client.resource(secret).update();
-        }
-    }
-
-    public void updateConfigMap(ConfigMap configMap) {
-        try (KubernetesClient client = kubernetesClient()) {
-            client.resource(configMap).update();
-        }
+        return properties.openshift().orElse(false);
     }
 
     public String getSecretValue(String secretName, String secretKey) {
         return getSecret(secretName).getData().get(secretKey);
+    }
+
+    public Secret getSecret(String name) {
+        try (KubernetesClient client = kubernetesClient()) {
+            return client.secrets().inNamespace(getNamespace()).withName(name).get();
+        }
     }
 
     public void setSecretValue(String secretName, String secretKey, String value) {
@@ -614,6 +571,12 @@ public class KubernetesService {
         if (secret != null) {
             secret.getData().put(secretKey, value);
             updateSecret(secret);
+        }
+    }
+
+    public void updateSecret(Secret secret) {
+        try (KubernetesClient client = kubernetesClient()) {
+            client.resource(secret).update();
         }
     }
 
@@ -641,7 +604,7 @@ public class KubernetesService {
                 result.add(new KubernetesSecret(secret.getMetadata().getName(), data));
             });
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
         }
         return result;
     }
@@ -661,7 +624,7 @@ public class KubernetesService {
             client.configMaps().inNamespace(getNamespace()).list().getItems()
                     .forEach(secret -> result.add(new KubernetesConfigMap(secret.getMetadata().getName(), new HashMap<>(secret.getData()))));
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
         }
         return result;
     }
@@ -680,6 +643,18 @@ public class KubernetesService {
         if (configMap != null) {
             configMap.getData().put(configMapKey, value);
             updateConfigMap(configMap);
+        }
+    }
+
+    public ConfigMap getConfigMap(String name) {
+        try (KubernetesClient client = kubernetesClient()) {
+            return client.configMaps().inNamespace(getNamespace()).withName(name).get();
+        }
+    }
+
+    public void updateConfigMap(ConfigMap configMap) {
+        try (KubernetesClient client = kubernetesClient()) {
+            client.resource(configMap).update();
         }
     }
 
@@ -705,6 +680,6 @@ public class KubernetesService {
     }
 
     public String getEnvironment() {
-        return environment;
+        return properties.environment();
     }
 }

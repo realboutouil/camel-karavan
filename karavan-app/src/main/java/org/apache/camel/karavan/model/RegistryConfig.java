@@ -17,35 +17,28 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Container registry configuration for image storage and retrieval")
 public class RegistryConfig {
+
+    @Schema(description = "Container registry URL or hostname", example = "docker.io")
     private String registry;
+
+    @Schema(description = "Organization or group name in the registry", example = "karavan-team")
     private String group;
+
+    @Schema(description = "Username for registry authentication", example = "admin")
     private String username;
+
+    @Schema(description = "Password for registry authentication", example = "secret123")
     private String password;
-
-    public RegistryConfig() {
-    }
-
-    public RegistryConfig(String registry, String group, String username, String password) {
-        this.registry = registry;
-        this.group = group;
-        this.username = username;
-        this.password = password;
-    }
-
-    public String getRegistry() {
-        return registry;
-    }
-
-    public String getGroup() {
-        return group;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
 }

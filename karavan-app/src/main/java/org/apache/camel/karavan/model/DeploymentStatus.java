@@ -17,20 +17,49 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Deployment status of a project")
 public class DeploymentStatus {
 
-    String projectId;
-    String namespace;
-    String env;
-    String cluster;
-    String image;
-    Integer replicas;
-    Integer readyReplicas;
-    Integer unavailableReplicas;
-    ContainerType type;
+    @Schema(description = "Project identifier", required = true, example = "my-integration-project")
+    private String projectId;
 
-    public DeploymentStatus() {
-    }
+    @Schema(description = "Kubernetes namespace or Docker network", required = true, example = "default")
+    private String namespace;
+
+    @Schema(description = "Environment name", required = true, example = "dev")
+    private String env;
+
+    @Schema(description = "Cluster name", required = true, example = "local")
+    private String cluster;
+
+    @Schema(description = "Container image name and tag", example = "registry:5000/karavan/my-project:latest")
+    @Builder.Default
+    private String image = "";
+
+    @Schema(description = "Desired number of replicas", example = "1")
+    @Builder.Default
+    private Integer replicas = 0;
+
+    @Schema(description = "Number of ready replicas", example = "1")
+    @Builder.Default
+    private Integer readyReplicas = 0;
+
+    @Schema(description = "Number of unavailable replicas", example = "0")
+    @Builder.Default
+    private Integer unavailableReplicas = 0;
+
+    @Schema(description = "Container type (Docker or Kubernetes)", required = true)
+    private ContainerType type;
 
     public DeploymentStatus(String projectId, String namespace, String cluster, String env) {
         this.projectId = projectId;
@@ -43,90 +72,7 @@ public class DeploymentStatus {
         this.unavailableReplicas = 0;
     }
 
-    public DeploymentStatus(String projectId, String namespace, String cluster, String env, String image, Integer replicas, Integer readyReplicas, Integer unavailableReplicas, ContainerType type) {
-        this.projectId = projectId;
-        this.namespace = namespace;
-        this.env = env;
-        this.cluster = cluster;
-        this.image = image;
-        this.replicas = replicas;
-        this.readyReplicas = readyReplicas;
-        this.unavailableReplicas = unavailableReplicas;
-        this.type = type;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public String getEnv() {
-        return env;
-    }
-
-    public void setEnv(String env) {
-        this.env = env;
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public void setNamespace(String namespace) {
-        this.namespace = namespace;
-    }
-
-    public String getImage() {
-        return image;
-    }
-
-    public void setImage(String image) {
-        this.image = image;
-    }
-
-    public Integer getReplicas() {
-        return replicas;
-    }
-
-    public void setReplicas(Integer replicas) {
-        this.replicas = replicas;
-    }
-
-    public Integer getReadyReplicas() {
-        return readyReplicas;
-    }
-
-    public void setReadyReplicas(Integer readyReplicas) {
-        this.readyReplicas = readyReplicas;
-    }
-
-    public Integer getUnavailableReplicas() {
-        return unavailableReplicas;
-    }
-
-    public void setUnavailableReplicas(Integer unavailableReplicas) {
-        this.unavailableReplicas = unavailableReplicas;
-    }
-
-    public String getCluster() {
-        return cluster;
-    }
-
-    public void setCluster(String cluster) {
-        this.cluster = cluster;
-    }
-
-    public ContainerType getType() {
-        return type;
-    }
-
-    public void setType(ContainerType type) {
-        this.type = type;
-    }
-
+    @Schema(description = "Create a copy of the deployment status")
     public DeploymentStatus copy() {
         return new DeploymentStatus(projectId, namespace, cluster, env, image, replicas, readyReplicas, unavailableReplicas, type);
     }

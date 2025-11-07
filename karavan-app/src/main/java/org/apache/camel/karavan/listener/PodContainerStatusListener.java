@@ -21,6 +21,7 @@ import io.quarkus.vertx.ConsumeEvent;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.model.PodContainerStatus;
 
@@ -31,10 +32,10 @@ import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_DELETED;
 import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_UPDATED;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class PodContainerStatusListener {
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
     @ConsumeEvent(value = POD_CONTAINER_DELETED, blocking = true, ordered = true)
     public void cleanContainersStatus(JsonObject data) {

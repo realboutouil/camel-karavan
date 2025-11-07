@@ -17,65 +17,79 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Docker Compose service definition representing a container service configuration")
 public class DockerComposeService {
 
+    @Schema(description = "Name of the container", example = "my-service-container")
     private String container_name;
+
+    @Schema(description = "Docker image to use for the container", example = "nginx:latest")
     private String image;
+
+    @Schema(description = "Restart policy for the container", example = "unless-stopped")
     private String restart;
+
+    @Schema(description = "Number of CPUs to allocate", example = "2")
     private String cpus;
+
+    @Schema(description = "CPU usage percentage limit", example = "50")
     private String cpu_percent;
+
+    @Schema(description = "Memory limit for the container", example = "512m")
     private String mem_limit;
+
+    @Schema(description = "Memory reservation for the container", example = "256m")
     private String mem_reservation;
+
+    @Schema(description = "Command to override the default container command", example = "/bin/sh -c 'echo hello'")
     private String command;
+
+    @Builder.Default
+    @Schema(description = "List of port mappings in format host:container", example = "[\"8080:80\", \"8443:443\"]")
     private List<String> ports = new ArrayList<>();
+
+    @Builder.Default
+    @Schema(description = "List of volume mounts for the container")
     private List<DockerComposeVolume> volumes = new ArrayList<>();
+
+    @Builder.Default
+    @Schema(description = "List of ports to expose without publishing to host", example = "[\"80\", \"443\"]")
     private List<String> expose = new ArrayList<>();
+
+    @Builder.Default
+    @Schema(description = "List of service names this service depends on", example = "[\"database\", \"cache\"]")
     private List<String> depends_on = new ArrayList<>();
+
+    @Builder.Default
+    @Schema(description = "List of networks this service is connected to", example = "[\"frontend\", \"backend\"]")
     private List<String> networks = new ArrayList<>();
-    private Map<String,String> environment = new HashMap<>();
+
+    @Builder.Default
+    @Schema(description = "Environment variables as key-value pairs", example = "{\"NODE_ENV\": \"production\", \"PORT\": \"3000\"}")
+    private Map<String, String> environment = new HashMap<>();
+
+    @Schema(description = "Health check configuration for the container")
     private DockerComposeHealthCheck healthcheck;
-    private Map<String,String> labels = new HashMap<>();
 
-    public DockerComposeService() {
-    }
-
-    public String getContainer_name() {
-        return container_name;
-    }
-
-    public void setContainer_name(String container_name) {
-        this.container_name = container_name;
-    }
-
-    public String getImage() {
-        return image;
-    }
-
-    public void setImage(String image) {
-        this.image = image;
-    }
-
-    public String getRestart() {
-        return restart;
-    }
-
-    public void setRestart(String restart) {
-        this.restart = restart;
-    }
-
-    public List<String> getPorts() {
-        return ports;
-    }
-
-    public void setPorts(List<String> ports) {
-        this.ports = ports;
-    }
+    @Builder.Default
+    @Schema(description = "Labels to apply to the container", example = "{\"com.example.version\": \"1.0\", \"com.example.team\": \"backend\"}")
+    private Map<String, String> labels = new HashMap<>();
 
     public Map<Integer, Integer> getPortsMap() {
         Map<Integer, Integer> p = new HashMap<>();
@@ -88,29 +102,9 @@ public class DockerComposeService {
         return p;
     }
 
-    public List<String> getExpose() {
-        return expose;
-    }
-
-    public void setExpose(List<String> expose) {
-        this.expose = expose;
-    }
-
-    public List<String> getDepends_on() {
-        return depends_on;
-    }
-
-    public void setDepends_on(List<String> depends_on) {
-        this.depends_on = depends_on;
-    }
-
-    public Map<String, String> getEnvironment() {
-        return environment != null ? environment : new HashMap<>();
-    }
-
     public List<String> getEnvironmentList() {
         return environment != null
-                ? environment.entrySet().stream() .map(e -> e.getKey().concat("=").concat(e.getValue())).collect(Collectors.toList())
+                ? environment.entrySet().stream().map(e -> e.getKey().concat("=").concat(e.getValue())).collect(Collectors.toList())
                 : new ArrayList<>();
     }
 
@@ -120,102 +114,7 @@ public class DockerComposeService {
         setEnvironment(map);
     }
 
-    public void setEnvironment(Map<String, String> environment) {
-        this.environment = environment;
+    public Map<String, String> getEnvironment() {
+        return environment != null ? environment : new HashMap<>();
     }
-
-    public DockerComposeHealthCheck getHealthcheck() {
-        return healthcheck;
-    }
-
-    public void setHealthcheck(DockerComposeHealthCheck healthcheck) {
-        this.healthcheck = healthcheck;
-    }
-
-    public List<String> getNetworks() {
-        return networks;
-    }
-
-    public void setNetworks(List<String> networks) {
-        this.networks = networks;
-    }
-
-    public String getCpu_percent() {
-        return cpu_percent;
-    }
-
-    public void setCpu_percent(String cpu_percent) {
-        this.cpu_percent = cpu_percent;
-    }
-
-    public String getCpus() {
-        return cpus;
-    }
-
-    public void setCpus(String cpus) {
-        this.cpus = cpus;
-    }
-
-    public String getMem_limit() {
-        return mem_limit;
-    }
-
-    public void setMem_limit(String mem_limit) {
-        this.mem_limit = mem_limit;
-    }
-
-    public String getMem_reservation() {
-        return mem_reservation;
-    }
-
-    public void setMem_reservation(String mem_reservation) {
-        this.mem_reservation = mem_reservation;
-    }
-
-    public List<DockerComposeVolume> getVolumes() {
-        return volumes;
-    }
-
-    public void setVolumes(List<DockerComposeVolume> volumes) {
-        this.volumes = volumes;
-    }
-
-    public Map<String,String> getLabels() {
-        return labels;
-    }
-
-    public void setLabels(Map<String,String> labels) {
-        this.labels = labels;
-    }
-
-    public String getCommand() {
-        return command;
-    }
-
-    public void setCommand(String command) {
-        this.command = command;
-    }
-
-    @Override
-    public String toString() {
-        return "DockerComposeService {" +
-                "container_name='" + container_name + '\'' +
-                ", image='" + image + '\'' +
-                ", restart='" + restart + '\'' +
-                ", cpus='" + cpus + '\'' +
-                ", cpu_percent='" + cpu_percent + '\'' +
-                ", mem_limit='" + mem_limit + '\'' +
-                ", mem_reservation='" + mem_reservation + '\'' +
-                ", ports=" + ports +
-                ", networks=" + networks +
-                ", expose=" + expose +
-                ", depends_on='" + depends_on + '\'' +
-                ", environment=" + environment +
-                ", healthcheck=" + healthcheck +
-                ", volumes=" + volumes +
-                ", environment=" + environment +
-                ", labels=" + labels +
-                '}';
-    }
-
 }

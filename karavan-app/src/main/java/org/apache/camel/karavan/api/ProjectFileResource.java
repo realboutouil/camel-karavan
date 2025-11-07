@@ -21,6 +21,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.model.Project;
 import org.apache.camel.karavan.model.ProjectFile;
@@ -32,11 +33,11 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 @Path("/ui/file")
 public class ProjectFileResource {
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -64,7 +65,7 @@ public class ProjectFileResource {
         files.forEach(pf -> {
             var pfc = filesCommited.stream().filter(f -> Objects.equals(f.getName(), pf.getName())).findFirst();
             if (pfc.isPresent()) {
-                if (!Objects.equals(pfc.get().getCode(), pf.getCode())){
+                if (!Objects.equals(pfc.get().getCode(), pf.getCode())) {
                     result.put(pf.getName(), "CHANGED");
                 }
             } else {
@@ -84,7 +85,7 @@ public class ProjectFileResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/templates/beans")
     public List<ProjectFile> getBeanTemplates() throws Exception {
-        return  karavanCache.getProjectFiles(Project.Type.templates.name()).stream()
+        return karavanCache.getProjectFiles(Project.Type.templates.name()).stream()
                 .filter(file -> file.getName().endsWith(CodeService.BEAN_TEMPLATE_SUFFIX_FILENAME))
                 .toList();
     }

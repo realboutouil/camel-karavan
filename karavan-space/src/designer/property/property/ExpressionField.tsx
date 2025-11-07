@@ -20,12 +20,10 @@ import {
     FormGroup,
     Popover
 } from '@patternfly/react-core';
-import {
-	Select,
-	SelectVariant,
-	SelectDirection,
-	SelectOption
-} from '@patternfly/react-core/deprecated';
+import {Text} from '../../utils/PatternFlyCompat';
+// NOTE: These imports are temporary until migration to PatternFly v6 Select
+// @ts-ignore
+import {Select, SelectVariant, SelectDirection, SelectOption} from '@patternfly/react-core';
 import '../../karavan.css';
 import "@patternfly/patternfly/patternfly.css";
 import HelpIcon from "@patternfly/react-icons/dist/js/icons/help-icon";
@@ -44,6 +42,7 @@ interface Props {
     property: PropertyMeta,
     value: CamelElement,
     onExpressionChange?: (propertyName: string, exp: ExpressionDefinition) => void,
+    expressionEditor: React.ComponentType<any>
 }
 
 export function ExpressionField(props: Props) {
@@ -149,10 +148,10 @@ export function ExpressionField(props: Props) {
                 className={valueChangedClassName}
                 variant={SelectVariant.typeahead}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(isExpanded)
                 }}
-                onSelect={(e, lang, isPlaceholder) => {
+                onSelect={(e: any, lang: any, isPlaceholder?: boolean) => {
                     expressionChanged(lang.toString(), value);
                 }}
                 selections={dslLanguage}
@@ -164,21 +163,7 @@ export function ExpressionField(props: Props) {
             </Select>
             <FormGroup
                 key={property.name}
-                fieldId={property.name}
-                labelIcon={property.description ?
-                    <Popover
-                        position={"left"}
-                        headerContent={property.displayName}
-                        bodyContent={property.description}>
-                        <button type="button" aria-label="More info" onClick={e => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                                className="pf-v5-c-form__group-label-help">
-                            <HelpIcon/>
-                        </button>
-                    </Popover> : <div></div>
-                }>
+                fieldId={property.name}>
                 {exp && <DslPropertyField key={exp.name + props.value?.uuid}
                                           property={exp}
                                           value={value ? (value as any)[exp.name] : undefined}
@@ -190,6 +175,7 @@ export function ExpressionField(props: Props) {
                                           onDataFormatChange={dataFormat => {
                                           }}
                                           onPropertyChange={propertyChanged}
+                                          expressionEditor={props.expressionEditor}
                 />}
                 <ExpandableSection
                     toggleText={'Expression properties'}
@@ -207,6 +193,7 @@ export function ExpressionField(props: Props) {
                                           onDataFormatChange={dataFormat => {
                                           }}
                                           onPropertyChange={propertyChanged}
+                                          expressionEditor={props.expressionEditor}
                         />
                     )}
                 </ExpandableSection>

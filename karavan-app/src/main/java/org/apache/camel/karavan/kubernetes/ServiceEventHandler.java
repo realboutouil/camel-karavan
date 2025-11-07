@@ -21,57 +21,55 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
+import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.model.ServiceStatus;
-import org.jboss.logging.Logger;
 
 import static org.apache.camel.karavan.KaravanEvents.SERVICE_DELETED;
 import static org.apache.camel.karavan.KaravanEvents.SERVICE_UPDATED;
 
+@Slf4j
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ServiceEventHandler implements ResourceEventHandler<Service> {
 
-    private static final Logger LOGGER = Logger.getLogger(ServiceEventHandler.class.getName());
-    private KubernetesStatusService kubernetesStatusService;
+    private final KubernetesStatusService kubernetesStatusService;
     private final EventBus eventBus;
-
-    public ServiceEventHandler(KubernetesStatusService kubernetesStatusService, EventBus eventBus) {
-        this.kubernetesStatusService = kubernetesStatusService;
-        this.eventBus = eventBus;
-    }
 
     @Override
     public void onAdd(Service service) {
         try {
-            LOGGER.info("onAdd " + service.getMetadata().getName());
+            log.info("onAdd " + service.getMetadata().getName());
             ServiceStatus ds = getServiceStatus(service);
             eventBus.publish(SERVICE_UPDATED, JsonObject.mapFrom(ds));
-        } catch (Exception e){
-            LOGGER.error(e.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
     @Override
     public void onUpdate(Service oldService, Service newService) {
         try {
-            LOGGER.info("onUpdate " + newService.getMetadata().getName());
+            log.info("onUpdate " + newService.getMetadata().getName());
             ServiceStatus ds = getServiceStatus(newService);
             eventBus.publish(SERVICE_UPDATED, JsonObject.mapFrom(ds));
-        } catch (Exception e){
-            LOGGER.error(e.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
     @Override
     public void onDelete(Service service, boolean deletedFinalStateUnknown) {
         try {
-            LOGGER.info("onDelete " + service.getMetadata().getName());
+            log.info("onDelete " + service.getMetadata().getName());
             ServiceStatus ds = new ServiceStatus(
                     service.getMetadata().getName(),
                     service.getMetadata().getNamespace(),
                     kubernetesStatusService.getCluster(),
                     kubernetesStatusService.getEnvironment());
             eventBus.publish(SERVICE_DELETED, JsonObject.mapFrom(ds));
-        } catch (Exception e){
-            LOGGER.error(e.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
@@ -88,7 +86,7 @@ public class ServiceEventHandler implements ResourceEventHandler<Service> {
                     service.getSpec().getType()
             );
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
             return new ServiceStatus(
                     service.getMetadata().getName(),
                     service.getMetadata().getNamespace(),

@@ -19,8 +19,9 @@ import {
     Toolbar,
     ToolbarContent,
     ToolbarItem,
-    PageSection, TextContent, Text, Flex, FlexItem, Button, Tooltip
+    PageSection, Flex, FlexItem, Button, Tooltip
 } from '@patternfly/react-core';
+import {Text, TextContent} from '../designer/utils/PatternFlyCompat';
 import '../designer/karavan.css';
 import CopyIcon from "@patternfly/react-icons/dist/esm/icons/copy-icon";
 import DownloadIcon from "@patternfly/react-icons/dist/esm/icons/download-icon";
@@ -114,6 +115,9 @@ export class SpacePage extends React.Component<Props, State> {
                 onSavePropertyPlaceholder={(key, value) => {}}
                 onInternalConsumerClick={(uri?: string, name?: string, routeId?: string) => {
                     console.log("onInternalConsumerClick", uri, name, routeId)
+                }}
+                onCreateNewRoute={(componentName: string, propertyName: string, propertyValue: string) => {
+                    console.log("onCreateNewRoute", componentName, propertyName, propertyValue)
                 }}
                 files={[new IntegrationFile("example.camel.yaml", yaml)]}
             />

@@ -16,12 +16,14 @@
  */
 package org.apache.camel.karavan.api;
 
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
@@ -32,7 +34,6 @@ import org.apache.camel.karavan.model.Project;
 import org.apache.camel.karavan.service.ConfigService;
 import org.apache.camel.karavan.service.GitService;
 import org.apache.camel.karavan.service.ProjectService;
-import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.PartType;
 
 import java.io.InputStream;
@@ -41,33 +42,34 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 
+@Slf4j
 @Path("/ui/project")
 public class ProjectResource extends AbstractApiResource {
-    private static final Logger LOGGER = Logger.getLogger(ProjectResource.class.getName());
+
+    private final KaravanCache karavanCache;
+    private final KubernetesService kubernetesService;
+    private final DockerService dockerService;
+    private final GitService gitService;
+    private final DevModeResource devModeResource;
+    private final ContainerResource containerResource;
+    private final InfrastructureResource infrastructureResource;
+    private final ProjectService projectService;
 
     @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    KubernetesService kubernetesService;
-
-    @Inject
-    DockerService dockerService;
-
-    @Inject
-    GitService gitService;
-
-    @Inject
-    DevModeResource devModeResource;
-
-    @Inject
-    ContainerResource containerResource;
-
-    @Inject
-    InfrastructureResource infrastructureResource;
-
-    @Inject
-    ProjectService projectService;
+    public ProjectResource(SecurityIdentity securityIdentity, KaravanCache karavanCache, KubernetesService kubernetesService,
+                           DockerService dockerService, GitService gitService, DevModeResource devModeResource,
+                           ContainerResource containerResource, InfrastructureResource infrastructureResource,
+                           ProjectService projectService) {
+        super(securityIdentity);
+        this.karavanCache = karavanCache;
+        this.kubernetesService = kubernetesService;
+        this.dockerService = dockerService;
+        this.gitService = gitService;
+        this.devModeResource = devModeResource;
+        this.containerResource = containerResource;
+        this.infrastructureResource = infrastructureResource;
+        this.projectService = projectService;
+    }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -99,11 +101,11 @@ public class ProjectResource extends AbstractApiResource {
     public void delete(@PathParam("project") String project, @QueryParam("deleteContainers") boolean deleteContainers, @Context SecurityContext securityContext) throws Exception {
         String projectId = URLDecoder.decode(project, StandardCharsets.UTF_8);
         if (deleteContainers) {
-            LOGGER.info("Deleting containers");
+            log.info("Deleting containers");
             Response res1 = devModeResource.deleteDevMode(projectId, true);
             Response res2 = containerResource.deleteContainer(projectId, ContainerType.devmode.name(), projectId);
             Response res3 = containerResource.deleteContainer(projectId, ContainerType.packaged.name(), projectId);
-            LOGGER.info("Deleting deployments");
+            log.info("Deleting deployments");
             Response res4 = infrastructureResource.deleteDeployment(null, projectId);
         }
         var identity = getIdentity(securityContext);
@@ -113,7 +115,7 @@ public class ProjectResource extends AbstractApiResource {
         karavanCache.deleteProject(projectId, false);
         // delete from git
         gitService.deleteProject(projectId, identity.get("name"), identity.get("email"));
-        LOGGER.info("Project deleted");
+        log.info("Project deleted");
     }
 
     @POST
@@ -125,7 +127,7 @@ public class ProjectResource extends AbstractApiResource {
             projectService.buildProject(project, tag);
             return Response.ok().entity(project).build();
         } catch (Exception e) {
-            LOGGER.error(e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+            log.error(e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
         }

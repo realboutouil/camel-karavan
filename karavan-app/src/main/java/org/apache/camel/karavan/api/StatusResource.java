@@ -20,21 +20,21 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.model.CamelStatus;
 import org.apache.camel.karavan.model.CamelStatusValue;
 import org.apache.camel.karavan.model.DeploymentStatus;
-import org.jboss.logging.Logger;
 
 import java.util.List;
 
+@Slf4j
 @Path("/ui/status")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class StatusResource {
 
-    private static final Logger LOGGER = Logger.getLogger(StatusResource.class.getName());
-
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)

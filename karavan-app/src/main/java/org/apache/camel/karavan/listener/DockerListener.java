@@ -22,25 +22,24 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.docker.DockerService;
-import org.jboss.logging.Logger;
 
 import static org.apache.camel.karavan.KaravanEvents.*;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DockerListener {
 
-    private static final Logger LOGGER = Logger.getLogger(DockerListener.class.getName());
+    private final DockerService dockerService;
 
-    @Inject
-    DockerService dockerService;
-
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = CMD_PULL_IMAGES, blocking = true)
     void loadImagesForProject(JsonObject event) {
-        LOGGER.info("Pull image event: " + event.encodePrettily());
+        log.info("Pull image event: " + event.encodePrettily());
         String projectId = event.getString("projectId");
         String userId = event.getString("userId");
         try {
@@ -48,7 +47,7 @@ public class DockerListener {
             eventBus.publish(NOTIFICATION_IMAGES_LOADED, event);
         } catch (Exception e) {
             var error = "Failed to load images " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
-            LOGGER.error(error);
+            log.error(error);
             eventBus.publish(NOTIFICATION_ERROR, JsonObject.of("userId", userId, "className", "image", "error", error)
             );
         }

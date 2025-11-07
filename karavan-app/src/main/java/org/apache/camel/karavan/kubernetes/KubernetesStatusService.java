@@ -30,67 +30,45 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Default;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Readiness;
-import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
+@Slf4j
 @Default
 @Readiness
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class KubernetesStatusService implements HealthCheck {
 
-    private static final Logger LOGGER = Logger.getLogger(KubernetesStatusService.class.getName());
     protected static final int INFORMERS = 3;
 
-    @Inject
-    EventBus eventBus;
-
-    private String namespace;
-
-    @Produces
-    public KubernetesClient kubernetesClient() {
-        return new KubernetesClientBuilder().build();
-    }
-
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    private String environment;
-
-    @ConfigProperty(name = "karavan.openshift")
-    Optional<Boolean> isOpenShift;
-
+    private final EventBus eventBus;
+    private final KaravanProperties properties;
     List<SharedIndexInformer> informers = new ArrayList<>(INFORMERS);
-
+    private String namespace;
 
     void onStart(@Observes StartupEvent ev) throws Exception {
         if (ConfigService.inKubernetes()) {
-            LOGGER.info("Status Listeners: starting...");
+            log.info("Status Listeners: starting...");
             startInformers();
-            LOGGER.info("Status Listeners: started");
-        }
-    }
-
-    void onStop(@Observes ShutdownEvent ev) throws IOException {
-        if (ConfigService.inKubernetes()) {
-            LOGGER.info("Status Listeners: stopping...");
-            stopInformers();
-            LOGGER.info("Status Listeners: stopped");
+            log.info("Status Listeners: started");
         }
     }
 
     public void startInformers() {
         try {
             stopInformers();
-            LOGGER.info("Starting Kubernetes Informers");
+            log.info("Starting Kubernetes Informers");
 
             KubernetesClient client = kubernetesClient();
 
@@ -103,15 +81,42 @@ public class KubernetesStatusService implements HealthCheck {
             informers.add(serviceInformer);
 
             SharedIndexInformer<Pod> podRunInformer = client.pods().inNamespace(getNamespace()).inform();
-            podRunInformer.addEventHandlerWithResyncPeriod(new PodEventHandler( this, eventBus), 30 * 1000L);
+            podRunInformer.addEventHandlerWithResyncPeriod(new PodEventHandler(this, eventBus), 30 * 1000L);
             informers.add(podRunInformer);
 
-            LOGGER.info("Started Kubernetes Informers");
+            log.info("Started Kubernetes Informers");
         } catch (Exception e) {
-            LOGGER.error("Error starting informers: " + e.getMessage());
+            log.error("Error starting informers: " + e.getMessage());
         }
     }
 
+    public void stopInformers() {
+        log.info("Stop Kubernetes Informers");
+        informers.forEach(SharedIndexInformer::close);
+        informers.clear();
+    }
+
+    @Produces
+    public KubernetesClient kubernetesClient() {
+        return new KubernetesClientBuilder().build();
+    }
+
+    public String getNamespace() {
+        if (namespace == null) {
+            try (KubernetesClient client = kubernetesClient()) {
+                namespace = LaunchMode.current().getProfileKey().equalsIgnoreCase("dev") ? "karavan" : client.getNamespace();
+            }
+        }
+        return namespace;
+    }
+
+    void onStop(@Observes ShutdownEvent ev) throws IOException {
+        if (ConfigService.inKubernetes()) {
+            log.info("Status Listeners: stopping...");
+            stopInformers();
+            log.info("Status Listeners: stopped");
+        }
+    }
 
     @Override
     public HealthCheckResponse call() {
@@ -124,22 +129,6 @@ public class KubernetesStatusService implements HealthCheck {
         } else {
             return HealthCheckResponse.named("Kubernetesless").up().build();
         }
-    }
-
-    public void stopInformers() {
-        LOGGER.info("Stop Kubernetes Informers");
-        informers.forEach(SharedIndexInformer::close);
-        informers.clear();
-    }
-
-
-    public String getNamespace() {
-        if (namespace == null) {
-            try (KubernetesClient client = kubernetesClient()) {
-                namespace = LaunchMode.current().getProfileKey().equalsIgnoreCase("dev") ? "karavan" : client.getNamespace();
-            }
-        }
-        return namespace;
     }
 
     public Deployment getDeployment(String name) {
@@ -164,6 +153,6 @@ public class KubernetesStatusService implements HealthCheck {
     }
 
     public String getEnvironment() {
-        return environment;
+        return properties.environment();
     }
 }

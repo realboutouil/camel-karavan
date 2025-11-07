@@ -16,6 +16,7 @@
  */
 package org.apache.camel.karavan.api;
 
+import io.quarkus.security.identity.SecurityIdentity;
 import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.inject.Inject;
@@ -24,23 +25,26 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.service.ProjectService;
-import org.jboss.logging.Logger;
 
 import java.util.HashMap;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_PUSH_PROJECT;
 
+@Slf4j
 @Path("/ui/git")
 public class ProjectGitResource extends AbstractApiResource {
 
-    private static final Logger LOGGER = Logger.getLogger(ProjectGitResource.class.getName());
+    private final ProjectService projectService;
+    private final EventBus eventBus;
 
     @Inject
-    ProjectService projectService;
-
-    @Inject
-    EventBus eventBus;
+    public ProjectGitResource(SecurityIdentity securityIdentity, ProjectService projectService, EventBus eventBus) {
+        super(securityIdentity);
+        this.projectService = projectService;
+        this.eventBus = eventBus;
+    }
 
 
     @POST
@@ -64,7 +68,7 @@ public class ProjectGitResource extends AbstractApiResource {
             projectService.importProject(projectId);
             return Response.ok().build();
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
             return Response.serverError().entity(e.getMessage()).build();
         }
 

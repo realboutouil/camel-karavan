@@ -17,50 +17,30 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import java.util.List;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Git repository representation containing metadata and file list")
 public class GitRepo {
+
+    @Schema(description = "Repository name", example = "my-camel-project")
     private String name;
+
+    @Schema(description = "Current commit ID (SHA-1 hash)", example = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0")
     private String commitId;
+
+    @Schema(description = "Timestamp of the last commit in milliseconds", example = "1699564800000")
     private Long lastCommitTimestamp;
+
+    @Schema(description = "List of files in the repository")
     private List<GitRepoFile> files;
-
-    public GitRepo(String name, String commitId, Long lastCommitTimestamp, List<GitRepoFile> files) {
-        this.name = name;
-        this.commitId = commitId;
-        this.lastCommitTimestamp = lastCommitTimestamp;
-        this.files = files;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getCommitId() {
-        return commitId;
-    }
-
-    public void setCommitId(String commitId) {
-        this.commitId = commitId;
-    }
-
-    public Long getLastCommitTimestamp() {
-        return lastCommitTimestamp;
-    }
-
-    public void setLastCommitTimestamp(Long lastCommitTimestamp) {
-        this.lastCommitTimestamp = lastCommitTimestamp;
-    }
-
-    public List<GitRepoFile> getFiles() {
-        return files;
-    }
-
-    public void setFiles(List<GitRepoFile> files) {
-        this.files = files;
-    }
 }

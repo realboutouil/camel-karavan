@@ -17,100 +17,47 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Represents the status and configuration of a Kubernetes service")
 public class ServiceStatus {
 
-    String projectId;
-    String namespace;
-    String env;
-    String cluster;
-    Integer port;
-    Integer targetPort;
-    String clusterIP;
-    String type;
+    @Schema(description = "The unique identifier of the project", example = "my-camel-project")
+    private String projectId;
 
-    public ServiceStatus() {
-    }
+    @Schema(description = "The Kubernetes namespace where the service is deployed", example = "default")
+    private String namespace;
 
-    public ServiceStatus(String projectId, String namespace, String env, String cluster, Integer port, Integer targetPort, String clusterIP, String type) {
-        this.projectId = projectId;
-        this.namespace = namespace;
-        this.env = env;
-        this.cluster = cluster;
-        this.port = port;
-        this.targetPort = targetPort;
-        this.clusterIP = clusterIP;
-        this.type = type;
-    }
+    @Schema(description = "The environment where the service is running", example = "dev")
+    private String env;
+
+    @Schema(description = "The cluster name where the service is deployed", example = "production-cluster")
+    private String cluster;
+
+    @Schema(description = "The port exposed by the service", example = "8080")
+    private Integer port;
+
+    @Schema(description = "The target port on the pod that the service forwards traffic to", example = "8080")
+    private Integer targetPort;
+
+    @Schema(description = "The internal cluster IP address assigned to the service", example = "10.96.0.1")
+    private String clusterIP;
+
+    @Schema(description = "The type of Kubernetes service", example = "ClusterIP")
+    private String type;
 
     public ServiceStatus(String projectId, String namespace, String cluster, String env) {
         this.projectId = projectId;
         this.namespace = namespace;
         this.env = env;
         this.cluster = cluster;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public void setNamespace(String namespace) {
-        this.namespace = namespace;
-    }
-
-    public String getEnv() {
-        return env;
-    }
-
-    public void setEnv(String env) {
-        this.env = env;
-    }
-
-    public String getCluster() {
-        return cluster;
-    }
-
-    public void setCluster(String cluster) {
-        this.cluster = cluster;
-    }
-
-    public Integer getPort() {
-        return port;
-    }
-
-    public void setPort(Integer port) {
-        this.port = port;
-    }
-
-    public Integer getTargetPort() {
-        return targetPort;
-    }
-
-    public void setTargetPort(Integer targetPort) {
-        this.targetPort = targetPort;
-    }
-
-    public String getClusterIP() {
-        return clusterIP;
-    }
-
-    public void setClusterIP(String clusterIP) {
-        this.clusterIP = clusterIP;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 }

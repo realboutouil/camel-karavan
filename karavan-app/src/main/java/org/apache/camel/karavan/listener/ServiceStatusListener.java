@@ -21,6 +21,7 @@ import io.quarkus.vertx.ConsumeEvent;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.KaravanCache;
 import org.apache.camel.karavan.model.ServiceStatus;
 
@@ -28,10 +29,10 @@ import static org.apache.camel.karavan.KaravanEvents.SERVICE_DELETED;
 import static org.apache.camel.karavan.KaravanEvents.SERVICE_UPDATED;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ServiceStatusListener {
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
     @ConsumeEvent(value = SERVICE_DELETED, blocking = true, ordered = true)
     public void cleanServiceStatus(JsonObject data) {

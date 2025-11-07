@@ -1,12 +1,12 @@
 {
   "name": "karavan",
-  "version": "4.14.0",
+  "version": "4.14.2",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run && vite --port 3003",
-    "build": "npm run && tsc && vite build",
-    "serve": "npm run && vite preview"
+    "dev": "vite --port 3003",
+    "build": "tsc && vite build",
+    "serve": "vite preview"
   },
   "proxy": "http://127.0.0.1:8080/",
   "eslintConfig": {

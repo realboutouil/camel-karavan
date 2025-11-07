@@ -17,52 +17,28 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Container image information from Docker registry or local cache")
 public class ContainerImage {
 
+    @Schema(description = "Unique identifier of the container image", example = "sha256:abc123def456...")
     private String id;
+
+    @Schema(description = "Image tag/version", example = "nginx:1.21.0")
     private String tag;
+
+    @Schema(description = "Timestamp when the image was created (Unix epoch in milliseconds)", example = "1638360000000")
     private Long created;
+
+    @Schema(description = "Size of the image in bytes", example = "142000000")
     private Long size;
-
-    public ContainerImage() {
-    }
-
-    public ContainerImage(String id, String tag, Long created, Long size) {
-        this.id = id;
-        this.tag = tag;
-        this.created = created;
-        this.size = size;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getTag() {
-        return tag;
-    }
-
-    public void setTag(String tag) {
-        this.tag = tag;
-    }
-
-    public Long getCreated() {
-        return created;
-    }
-
-    public void setCreated(Long created) {
-        this.created = created;
-    }
-
-    public Long getSize() {
-        return size;
-    }
-
-    public void setSize(Long size) {
-        this.size = size;
-    }
 }

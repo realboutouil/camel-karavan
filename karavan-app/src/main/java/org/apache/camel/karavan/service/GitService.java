@@ -22,6 +22,9 @@ import io.smallrye.mutiny.tuples.Tuple2;
 import io.vertx.core.Vertx;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.config.KaravanProperties;
 import org.apache.camel.karavan.model.*;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -40,8 +43,6 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -55,93 +56,41 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class GitService {
 
-    @ConfigProperty(name = "karavan.git.repository")
-    String repository;
-
-    @ConfigProperty(name = "karavan.git.username")
-    Optional<String> username;
-
-    @ConfigProperty(name = "karavan.git.password")
-    Optional<String> password;
-
-    @ConfigProperty(name = "karavan.git.branch", defaultValue = "main")
-    String branch;
-
-    @ConfigProperty(name = "karavan.private-key-path")
-    Optional<String> privateKeyPath;
-
-    @ConfigProperty(name = "karavan.known-hosts-path")
-    Optional<String> knownHostsPath;
-
-    @ConfigProperty(name = "karavan.git.ephemeral", defaultValue = "false")
-    boolean ephemeral;
-
-    @Inject
-    Vertx vertx;
+    private final KaravanProperties properties;
+    private final Vertx vertx;
 
     SshSessionFactory sshSessionFactory;
 
     private Git gitForImport;
 
-    private static final Logger LOGGER = Logger.getLogger(GitService.class.getName());
-
-    public Git getGitForImport() {
-        if (gitForImport == null) {
-            try {
-                gitForImport = getGit(true, vertx.fileSystem().createTempDirectoryBlocking("import"));
-            } catch (Exception e) {
-                LOGGER.error("Error", e);
-            }
-        }
-        return gitForImport;
-    }
-
-    public GitConfig getGitConfig() {
-        try {
-            if (ephemeral) {
-                repository = "http://karavan.git";
-                username = Optional.of("karavan");
-                password = Optional.of("karavan");
-                privateKeyPath = Optional.empty();
-                knownHostsPath = Optional.empty();
-            }
-            if (repository == null || repository.isBlank()) {
-                LOGGER.error("Git repository configuration 'karavan.git.repository' is missing or empty. Please set it in your application properties.");
-                throw new IllegalStateException("Missing required configuration: karavan.git.repository");
-            }
-            return new GitConfig(repository, username.orElse(null), password.orElse(null), branch, privateKeyPath.orElse(null));
-        } catch (Exception e) {
-            LOGGER.error("Failed to load Git configuration: " + e.getMessage(), e);
-            throw e;
-        }
-    }
-
-    public Tuple2<String,String> getSShFiles() {
-        return Tuple2.of(privateKeyPath.orElse(null), knownHostsPath.orElse(null));
+    public Tuple2<String, String> getSShFiles() {
+        return Tuple2.of(properties.privateKeyPath().orElse(null), properties.knownHostsPath().orElse(null));
     }
 
     public GitConfig getGitConfigForBuilder() {
-        return new GitConfig(repository, username.orElse(null), password.orElse(null), branch, privateKeyPath.orElse(null));
+        return new GitConfig(properties.git().repository().orElse(null), properties.git().username().orElse(null), properties.git().password().orElse(null), properties.git().branch(), properties.privateKeyPath().orElse(null));
     }
 
     public RevCommit commitAndPushProject(Project project, List<ProjectFile> files, String message, String authorName, String authorEmail, List<String> fileNames) throws GitAPIException, IOException, URISyntaxException {
-        LOGGER.info("Commit and push project " + project.getProjectId());
+        log.info("Commit and push project " + project.getProjectId());
         GitConfig gitConfig = getGitConfig();
         String uuid = UUID.randomUUID().toString();
         String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
-        LOGGER.info("Temp folder created " + folder);
+        log.info("Temp folder created " + folder);
         Git git = getGit(true, folder);
 //        try {
 //            git = clone(folder, gitConfig.getUri(), gitConfig.getBranch());
 //            checkout(git, false, null, null, gitConfig.getBranch());
 //        } catch (RefNotFoundException | InvalidRemoteException | TransportException e) {
-//            LOGGER.error("New repository");
+//            log.error("New repository");
 //            git = init(folder, gitConfig.getUri(), gitConfig.getBranch());
 //        } catch (Exception e) {
-//            LOGGER.error("Error", e);
+//            log.error("Error", e);
 //        }
         writeProjectToFolder(folder, project, files);
         addDeletedFilesToIndex(git, folder, project, files);
@@ -151,18 +100,24 @@ public class GitService {
     public List<GitRepo> readProjectsToImport() {
         Git importGit = getGitForImport();
         if (importGit != null) {
-            return readProjectsFromRepository(importGit, new String[0]);
+            return readProjectsFromRepository(importGit);
         }
         return new ArrayList<>(0);
     }
 
-    public GitRepo readProjectFromRepository(String projectId) throws GitAPIException, IOException, URISyntaxException {
-        Git git = getGit(true, vertx.fileSystem().createTempDirectoryBlocking(UUID.randomUUID().toString()));
-        return readProjectsFromRepository(git, projectId).get(0);
+    public Git getGitForImport() {
+        if (gitForImport == null) {
+            try {
+                gitForImport = getGit(true, vertx.fileSystem().createTempDirectoryBlocking("import"));
+            } catch (Exception e) {
+                log.error("Error", e);
+            }
+        }
+        return gitForImport;
     }
 
     private List<GitRepo> readProjectsFromRepository(Git git, String... filter) {
-        LOGGER.info("Read projects...");
+        log.info("Read projects...");
         List<GitRepo> result = new ArrayList<>();
         try {
             String folder = git.getRepository().getDirectory().getAbsolutePath().replace(File.separator + ".git", "");
@@ -182,21 +137,21 @@ public class GitService {
             }
             return result;
         } catch (RefNotFoundException e) {
-            LOGGER.error("New repository");
+            log.error("New repository");
             return result;
         } catch (Exception e) {
-            LOGGER.error("Error", e);
+            log.error("Error", e);
             return result;
         }
     }
 
     public Git getGit(boolean checkout, String folder) throws GitAPIException, IOException, URISyntaxException {
         GitConfig gitConfig = getGitConfig();
-        LOGGER.info("Git checkout " + gitConfig.getUri());
-        LOGGER.info("Temp folder created " + folder);
+        log.info("Git checkout " + gitConfig.getUri());
+        log.info("Temp folder created " + folder);
         Git git = null;
-        if (ephemeral) {
-            LOGGER.warn("New ephemeral repository");
+        if (properties.git().ephemeral()) {
+            log.warn("New ephemeral repository");
             git = init(folder, gitConfig.getUri(), gitConfig.getBranch());
         } else {
             try {
@@ -209,17 +164,17 @@ public class GitService {
                     checkout(git, false, null, null, gitConfig.getBranch());
                 }
             } catch (RefNotFoundException | InvalidRemoteException | TransportException e) {
-                LOGGER.error("New repository", e);
+                log.error("New repository", e);
                 git = init(folder, gitConfig.getUri(), gitConfig.getBranch());
             } catch (Exception e) {
-                LOGGER.error("Error", e);
+                log.error("Error", e);
             }
         }
         return git;
     }
 
     private List<String> readProjectsFromFolder(String folder, String... filter) {
-        LOGGER.info("Read projects from " + folder);
+        log.info("Read projects from " + folder);
         List<String> files = new ArrayList<>();
         vertx.fileSystem().readDirBlocking(folder).forEach(path -> {
             String[] filenames = path.split(Pattern.quote(File.separator));
@@ -228,7 +183,7 @@ public class GitService {
                 // skip hidden
             } else if (Files.isDirectory(Paths.get(path))) {
                 if (filter == null || filter.length == 0 || Arrays.asList(filter).contains(folderName)) {
-                    LOGGER.info("Importing project from folder " + folderName);
+                    log.info("Importing project from folder " + folderName);
                     files.add(folderName);
                 }
             }
@@ -237,72 +192,55 @@ public class GitService {
     }
 
     private Map<String, String> readProjectFilesFromFolder(String repoFolder, String projectFolder) {
-        LOGGER.infof("Read files from %s/%s", repoFolder, projectFolder);
+        log.info("Read files from {}/{}", repoFolder, projectFolder);
         Map<String, String> files = new HashMap<>();
         vertx.fileSystem().readDirBlocking(repoFolder + File.separator + projectFolder).forEach(f -> {
             String[] filenames = f.split(Pattern.quote(File.separator));
             String filename = filenames[filenames.length - 1];
             Path path = Paths.get(f);
             if (!filename.startsWith(".") && !Files.isDirectory(path)) {
-                LOGGER.info("Importing file " + filename);
+                log.info("Importing file " + filename);
                 try {
                     files.put(filename, Files.readString(path));
                 } catch (IOException e) {
-                    LOGGER.error("Error during file read", e);
+                    log.error("Error during file read", e);
                 }
             }
         });
         return files;
     }
 
-    private void writeProjectToFolder(String folder, Project project, List<ProjectFile> files) throws IOException {
-        Files.createDirectories(Paths.get(folder, project.getProjectId()));
-        LOGGER.info("Write files for project " + project.getProjectId());
-        files.forEach(file -> {
-            try {
-                LOGGER.info("Add file " + file.getName());
-                Files.writeString(Paths.get(folder, project.getProjectId(), file.getName()), file.getCode());
-            } catch (IOException e) {
-                LOGGER.error("Error during file write", e);
-            }
-        });
+    private Tuple2<String, Integer> lastCommit(Git git, String path) throws GitAPIException {
+        Iterable<RevCommit> log = git.log().addPath(path).setMaxCount(1).call();
+        for (RevCommit commit : log) {
+            return Tuple2.of(commit.getId().getName(), commit.getCommitTime());
+        }
+        return null;
     }
 
-    private void addDeletedFilesToIndex(Git git, String folder, Project project, List<ProjectFile> files) throws IOException {
-        Path path = Paths.get(folder, project.getProjectId());
-        LOGGER.info("Add deleted files to git index for project " + project.getProjectId());
-        vertx.fileSystem().readDirBlocking(path.toString()).forEach(f -> {
-            String[] filenames = f.split(Pattern.quote(File.separator));
-            String filename = filenames[filenames.length - 1];
-            LOGGER.info("Checking file " + filename);
-            if (files.stream().filter(pf -> Objects.equals(pf.getName(), filename)).count() == 0) {
-                try {
-                    LOGGER.info("Add deleted file " + filename);
-                    git.rm().addFilepattern(project.getProjectId() + "/" + filename).call();
-                } catch (GitAPIException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-    }
+    public GitConfig getGitConfig() {
+        try {
+            String repository = properties.git().repository().orElse(null);
+            Optional<String> username = properties.git().username();
+            Optional<String> password = properties.git().password();
+            String branch = properties.git().branch();
+            Optional<String> privateKeyPath = properties.privateKeyPath();
 
-    public RevCommit commitAddedAndPush(Git git, String branch, String message, String authorName, String authorEmail, List<String> fileNames, String projectId) throws GitAPIException {
-        LOGGER.info("Commit and push changes to the branch " + branch);
-        AddCommand add = git.add();
-        for (String fileName : fileNames) {
-            add = add.addFilepattern(projectId + "/" + fileName);
+            if (properties.git().ephemeral()) {
+                repository = "http://karavan.git";
+                username = Optional.of("karavan");
+                password = Optional.of("karavan");
+                privateKeyPath = Optional.empty();
+            }
+            if (repository == null || repository.isBlank()) {
+                log.error("Git repository configuration 'karavan.git.repository' is missing or empty. Please set it in your application properties.");
+                throw new IllegalStateException("Missing required configuration: karavan.git.repository");
+            }
+            return new GitConfig(repository, username.orElse(null), password.orElse(null), branch, privateKeyPath.orElse(null));
+        } catch (Exception e) {
+            log.error("Failed to load Git configuration: " + e.getMessage(), e);
+            throw e;
         }
-        LOGGER.info("Git add: " + add.call());
-        RevCommit commit = git.commit().setMessage(message).setAuthor(new PersonIdent(authorName, authorEmail)).call();
-        LOGGER.info("Git commit: " + commit);
-        if (!ephemeral) {
-            PushCommand pushCommand = git.push();
-            pushCommand.add(branch).setRemote("origin");
-            setCredentials(pushCommand);
-            Iterable<PushResult> result = pushCommand.call();
-            LOGGER.info("Git push: " + result);
-        }
-        return commit;
     }
 
     public Git init(String dir, String uri, String branch) throws GitAPIException, IOException, URISyntaxException {
@@ -310,38 +248,6 @@ public class GitService {
 //        git.branchCreate().setName(branch).call();
         addRemote(git, uri);
         return git;
-    }
-
-    private void addDeletedFolderToIndex(Git git, String projectId) {
-        LOGGER.infof("Add folder %s to git index.", projectId);
-        try {
-            git.rm().addFilepattern(projectId + "/").call();
-        } catch (GitAPIException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void deleteProject(String projectId, String authorName, String authorEmail) {
-        LOGGER.info("Delete and push project " + projectId);
-        GitConfig gitConfig = getGitConfig();
-        String uuid = UUID.randomUUID().toString();
-        String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
-        String commitMessage = "Project " + projectId + " is deleted";
-        LOGGER.infof("Temp folder %s is created for deletion of project %s", folder, projectId);
-        try {
-            Git git = getGit(true, folder);
-            addDeletedFolderToIndex(git, projectId);
-            commitAddedAndPush(git, gitConfig.getBranch(), commitMessage, authorName, authorEmail, List.of("."), projectId);
-            LOGGER.info("Delete Temp folder " + folder);
-            git.close();
-            vertx.fileSystem().deleteRecursiveBlocking(folder, true);
-            LOGGER.infof("Project %s deleted from Git", projectId);
-        } catch (RefNotFoundException e) {
-            LOGGER.error("Repository not found");
-        } catch (Exception e) {
-            LOGGER.error("Error", e);
-            throw new RuntimeException(e);
-        }
     }
 
     private Git clone(String dir, String uri, String branch) throws GitAPIException, URISyntaxException {
@@ -354,28 +260,6 @@ public class GitService {
         Git git = command.call();
         addRemote(git, uri);
         return git;
-    }
-
-    private void addRemote(Git git, String uri) throws URISyntaxException, GitAPIException {
-        // add remote repo:
-        RemoteAddCommand remoteAddCommand = git.remoteAdd();
-        remoteAddCommand.setName("origin");
-        remoteAddCommand.setUri(new URIish(uri));
-        remoteAddCommand.call();
-    }
-
-    private void fetch(Git git) throws GitAPIException {
-        // fetch:
-        FetchCommand command = git.fetch();
-        setCredentials(command);
-        FetchResult result = command.call();
-    }
-
-    private void pull(Git git) throws GitAPIException {
-        // pull:
-        PullCommand command = git.pull();
-        setCredentials(command);
-        PullResult result = command.call();
     }
 
     private void createBranch(Git git, String branch) throws GitAPIException {
@@ -397,12 +281,144 @@ public class GitService {
         checkoutCommand.call();
     }
 
-    private Tuple2<String, Integer> lastCommit(Git git, String path) throws GitAPIException {
-        Iterable<RevCommit> log = git.log().addPath(path).setMaxCount(1).call();
-        for (RevCommit commit : log) {
-            return Tuple2.of(commit.getId().getName(), commit.getCommitTime());
+    private void addRemote(Git git, String uri) throws URISyntaxException, GitAPIException {
+        // add remote repo:
+        RemoteAddCommand remoteAddCommand = git.remoteAdd();
+        remoteAddCommand.setName("origin");
+        remoteAddCommand.setUri(new URIish(uri));
+        remoteAddCommand.call();
+    }
+
+    private <T extends TransportCommand> T setCredentials(T command) {
+        String repository = properties.git().repository().orElse("");
+        if (properties.privateKeyPath().isPresent() && (repository.startsWith("git") || repository.startsWith("ssh://"))) {
+            log.info("Set SshTransport");
+            command.setTransportConfigCallback(transport -> {
+                SshTransport sshTransport = (SshTransport) transport;
+                sshTransport.setSshSessionFactory(getSshSessionFactory());
+            });
+        } else if (properties.git().username().isPresent() && properties.git().password().isPresent()) {
+            log.info("Set UsernamePasswordCredentialsProvider");
+            command.setCredentialsProvider(new UsernamePasswordCredentialsProvider(properties.git().username().get(), properties.git().password().get()));
         }
-        return null;
+        return command;
+    }
+
+    private SshSessionFactory getSshSessionFactory() {
+        if (sshSessionFactory == null) {
+            sshSessionFactory = new JschConfigSessionFactory() {
+                protected void configureJSch(JSch jsch) {
+                    try {
+                        jsch.addIdentity(properties.privateKeyPath().get());
+                        jsch.setKnownHosts(properties.knownHostsPath().get());
+                    } catch (JSchException e) {
+                        log.info("Error configureJSch: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+                    }
+                }
+            };
+        }
+        return sshSessionFactory;
+    }
+
+    public GitRepo readProjectFromRepository(String projectId) throws GitAPIException, IOException, URISyntaxException {
+        Git git = getGit(true, vertx.fileSystem().createTempDirectoryBlocking(UUID.randomUUID().toString()));
+        return readProjectsFromRepository(git, projectId).get(0);
+    }
+
+    private void writeProjectToFolder(String folder, Project project, List<ProjectFile> files) throws IOException {
+        Files.createDirectories(Paths.get(folder, project.getProjectId()));
+        log.info("Write files for project " + project.getProjectId());
+        files.forEach(file -> {
+            try {
+                log.info("Add file " + file.getName());
+                Files.writeString(Paths.get(folder, project.getProjectId(), file.getName()), file.getCode());
+            } catch (IOException e) {
+                log.error("Error during file write", e);
+            }
+        });
+    }
+
+    private void addDeletedFilesToIndex(Git git, String folder, Project project, List<ProjectFile> files) throws IOException {
+        Path path = Paths.get(folder, project.getProjectId());
+        log.info("Add deleted files to git index for project " + project.getProjectId());
+        vertx.fileSystem().readDirBlocking(path.toString()).forEach(f -> {
+            String[] filenames = f.split(Pattern.quote(File.separator));
+            String filename = filenames[filenames.length - 1];
+            log.info("Checking file " + filename);
+            if (files.stream().filter(pf -> Objects.equals(pf.getName(), filename)).count() == 0) {
+                try {
+                    log.info("Add deleted file " + filename);
+                    git.rm().addFilepattern(project.getProjectId() + "/" + filename).call();
+                } catch (GitAPIException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
+    public RevCommit commitAddedAndPush(Git git, String branch, String message, String authorName, String authorEmail, List<String> fileNames, String projectId) throws GitAPIException {
+        log.info("Commit and push changes to the branch " + branch);
+        AddCommand add = git.add();
+        for (String fileName : fileNames) {
+            add = add.addFilepattern(projectId + "/" + fileName);
+        }
+        log.info("Git add: " + add.call());
+        RevCommit commit = git.commit().setMessage(message).setAuthor(new PersonIdent(authorName, authorEmail)).call();
+        log.info("Git commit: " + commit);
+        if (!properties.git().ephemeral()) {
+            PushCommand pushCommand = git.push();
+            pushCommand.add(branch).setRemote("origin");
+            setCredentials(pushCommand);
+            Iterable<PushResult> result = pushCommand.call();
+            log.info("Git push: " + result);
+        }
+        return commit;
+    }
+
+    private void addDeletedFolderToIndex(Git git, String projectId) {
+        log.info("Add folder {} to git index.", projectId);
+        try {
+            git.rm().addFilepattern(projectId + "/").call();
+        } catch (GitAPIException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void deleteProject(String projectId, String authorName, String authorEmail) {
+        log.info("Delete and push project " + projectId);
+        GitConfig gitConfig = getGitConfig();
+        String uuid = UUID.randomUUID().toString();
+        String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
+        String commitMessage = "Project " + projectId + " is deleted";
+        log.info("Temp folder {} is created for deletion of project {}", folder, projectId);
+        try {
+            Git git = getGit(true, folder);
+            addDeletedFolderToIndex(git, projectId);
+            commitAddedAndPush(git, gitConfig.getBranch(), commitMessage, authorName, authorEmail, List.of("."), projectId);
+            log.info("Delete Temp folder " + folder);
+            git.close();
+            vertx.fileSystem().deleteRecursiveBlocking(folder, true);
+            log.info("Project {} deleted from Git", projectId);
+        } catch (RefNotFoundException e) {
+            log.error("Repository not found");
+        } catch (Exception e) {
+            log.error("Error", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void fetch(Git git) throws GitAPIException {
+        // fetch:
+        FetchCommand command = git.fetch();
+        setCredentials(command);
+        FetchResult result = command.call();
+    }
+
+    private void pull(Git git) throws GitAPIException {
+        // pull:
+        PullCommand command = git.pull();
+        setCredentials(command);
+        PullResult result = command.call();
     }
 
     public Set<String> getChangedProjects(RevCommit commit) {
@@ -429,56 +445,26 @@ public class GitService {
                     }
                 });
             } catch (IOException e) {
-                LOGGER.error("Error", e);
+                log.error("Error", e);
             }
         }
         return files;
     }
 
     public boolean checkGit() throws Exception {
-        LOGGER.info("Check git");
-        if (ephemeral) {
+        log.info("Check git");
+        if (properties.git().ephemeral()) {
             return true;
         }
         GitConfig gitConfig = getGitConfig();
         String uuid = UUID.randomUUID().toString();
         String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
         try (Git git = clone(folder, gitConfig.getUri(), gitConfig.getBranch())) {
-            LOGGER.info("Git is ready");
+            log.info("Git is ready");
         } catch (Exception e) {
-            LOGGER.info("Error connecting git: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+            log.info("Error connecting git: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
         }
         return true;
-    }
-
-    private <T extends TransportCommand> T setCredentials(T command) {
-        if (privateKeyPath.isPresent() && (repository.startsWith("git") || repository.startsWith("ssh://"))) {
-            LOGGER.info("Set SshTransport");
-            command.setTransportConfigCallback(transport -> {
-                SshTransport sshTransport = (SshTransport) transport;
-                sshTransport.setSshSessionFactory(getSshSessionFactory());
-            });
-        } else if (username.isPresent() && password.isPresent()) {
-            LOGGER.info("Set UsernamePasswordCredentialsProvider");
-            command.setCredentialsProvider(new UsernamePasswordCredentialsProvider(username.get(), password.get()));
-        }
-        return command;
-    }
-
-    private SshSessionFactory getSshSessionFactory() {
-        if (sshSessionFactory == null) {
-            sshSessionFactory = new JschConfigSessionFactory() {
-                protected void configureJSch(JSch jsch) {
-                    try {
-                        jsch.addIdentity(privateKeyPath.get());
-                        jsch.setKnownHosts(knownHostsPath.get());
-                    } catch (JSchException e) {
-                        LOGGER.info("Error configureJSch: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
-                    }
-                }
-            };
-        }
-        return sshSessionFactory;
     }
 
     public List<ProjectCommit> getProjectCommits(String projectId) {
@@ -497,7 +483,7 @@ public class GitService {
                         });
             }
         } catch (Exception e) {
-            LOGGER.error("Error", e);
+            log.error("Error", e);
         }
         return result;
     }
@@ -543,7 +529,7 @@ public class GitService {
                 }
             }
         } catch (IOException e) {
-            LOGGER.error("Error", e);
+            log.error("Error", e);
         }
         return result;
     }

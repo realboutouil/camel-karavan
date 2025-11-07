@@ -17,42 +17,25 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Docker Compose volume mount configuration")
 public class DockerComposeVolume {
 
+    @Schema(description = "Type of volume mount (bind, volume, tmpfs)", example = "bind")
     private String type;
+
+    @Schema(description = "Source path on the host or volume name", example = "/host/path")
     private String source;
+
+    @Schema(description = "Target mount path inside the container", example = "/container/path")
     private String target;
-
-    public DockerComposeVolume() {
-    }
-
-    public DockerComposeVolume(String type, String source, String target) {
-        this.type = type;
-        this.source = source;
-        this.target = target;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getSource() {
-        return source;
-    }
-
-    public void setSource(String source) {
-        this.source = source;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public void setTarget(String target) {
-        this.target = target;
-    }
 }

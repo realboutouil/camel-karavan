@@ -21,27 +21,28 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.apache.camel.karavan</groupId>
     <artifactId>karavan</artifactId>
-    <version>4.14.0</version>
+    <version>4.14.2</version>
 
     <properties>
-        <compiler-plugin.version>3.14.0</compiler-plugin.version>
-        <maven.compiler.parameters>true</maven.compiler.parameters>
         <maven.compiler.source>21</maven.compiler.source>
-        <jandex-maven-plugin-version>3.1.1</jandex-maven-plugin-version>
         <maven.compiler.target>21</maven.compiler.target>
+        <compiler-plugin.version>3.14.1</compiler-plugin.version>
+        <maven.compiler.parameters>true</maven.compiler.parameters>
+        <jandex-maven-plugin-version>1.2.3</jandex-maven-plugin-version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.27.0</quarkus.platform.version>
-        <surefire-plugin.version>3.1.0</surefire-plugin.version>
-        <jgit.version>3.6.0</jgit.version>
-        <infinispan-embedded.version>1.2.0</infinispan-embedded.version>
+        <quarkus.platform.version>3.29.0</quarkus.platform.version>
+        <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <jgit.version>3.6.1</jgit.version>
+        <infinispan-embedded.version>1.2.1</infinispan-embedded.version>
         <quinoa.version>2.6.2</quinoa.version>
         <commons-text.version>1.14.0</commons-text.version>
-        <resources-plugin.version>3.3.0</resources-plugin.version>
+        <resources-plugin.version>3.3.1</resources-plugin.version>
         <docker-java.version>3.6.0</docker-java.version>
-        <build-helper-version>3.6.0</build-helper-version>
+        <build-helper-version>3.6.1</build-helper-version>
+        <lombok.version>1.18.42</lombok.version>
     </properties>
 
     <dependencyManagement>
@@ -91,13 +92,6 @@
             <version>${infinispan-embedded.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-bom</artifactId>
-            <version>7.1.2.Final</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-        <dependency>
             <groupId>io.quarkiverse.jgit</groupId>
             <artifactId>quarkus-jgit</artifactId>
             <version>${jgit.version}</version>
@@ -123,18 +117,35 @@
             <artifactId>quarkus-smallrye-health</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-openapi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-config-yaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
+            <version>${commons-text.version}</version>
         </dependency>
         <!-- Docker -->
         <dependency>
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java-core</artifactId>
+            <version>${docker-java.version}</version>
             <optional>false</optional>
         </dependency>
         <dependency>
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java-transport-zerodep</artifactId>
+            <version>${docker-java.version}</version>
             <optional>false</optional>
         </dependency>
         <dependency>
@@ -190,6 +201,16 @@
                 <version>${compiler-plugin.version}</version>
                 <configuration>
                     <parameters>${maven.compiler.parameters}</parameters>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -205,6 +226,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
+                <version>${resources-plugin.version}</version>
                 <configuration>
                     <nonFilteredFileExtensions>
                         <nonFilteredFileExtension>ico</nonFilteredFileExtension>

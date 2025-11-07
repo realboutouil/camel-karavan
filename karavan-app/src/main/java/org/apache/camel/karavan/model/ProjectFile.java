@@ -17,66 +17,33 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "File within a Karavan project")
 public class ProjectFile {
 
-    String name;
-    String code;
-    String projectId;
-    Long lastUpdate;
+    @Schema(description = "File name with extension", required = true, example = "routes.camel.yaml")
+    private String name;
 
-    public ProjectFile(String name, String code, String projectId, Long lastUpdate) {
-        this.name = name;
-        this.code = code;
-        this.projectId = projectId;
-        this.lastUpdate = lastUpdate;
-    }
+    @Schema(description = "File content as string", required = true)
+    private String code;
 
-    public ProjectFile() {
-    }
+    @Schema(description = "Parent project identifier", required = true, example = "my-integration-project")
+    private String projectId;
 
-    public String getName() {
-        return name;
-    }
+    @Schema(description = "Timestamp of last file update in milliseconds since epoch", example = "1699876543210")
+    private Long lastUpdate;
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public Long getLastUpdate() {
-        return lastUpdate;
-    }
-
-    public void setLastUpdate(Long lastUpdate) {
-        this.lastUpdate = lastUpdate;
-    }
-
+    @Schema(description = "Create a copy of the project file")
     public ProjectFile copy() {
         return new ProjectFile(name, code, projectId, lastUpdate);
-    }
-
-    @Override
-    public String toString() {
-        return "ProjectFile{" +
-                "name='" + name + '\'' +
-                ", code='" + code + '\'' +
-                ", projectId='" + projectId + '\'' +
-                ", lastUpdate=" + lastUpdate +
-                '}';
     }
 }

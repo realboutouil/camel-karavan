@@ -40,7 +40,8 @@ public class DockerUtils {
     protected static final DecimalFormat formatGiB = new DecimalFormat("0.00");
     protected static final Map<String, Tuple2<Long, Long>> previousStats = new ConcurrentHashMap<>();
 
-    private static final Map<String, Long> UNIT_MULTIPLIERS = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);;
+    private static final Map<String, Long> UNIT_MULTIPLIERS = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
     static {
         UNIT_MULTIPLIERS.put("b", 1L);
         UNIT_MULTIPLIERS.put("k", 1024L);
@@ -85,7 +86,7 @@ public class DockerUtils {
         return new HealthCheck();
     }
 
-     public static long durationNanos(String s) {
+    public static long durationNanos(String s) {
         if (Pattern.compile("\\d+d\\s").matcher(s).find()) {
             int idxSpace = s.indexOf(" ");
             s = "P" + s.substring(0, idxSpace) + "T" + s.substring(idxSpace + 1);
@@ -126,6 +127,44 @@ public class DockerUtils {
                 ports, type, commands, container.getState(), created, camelRuntime, container.getLabels());
     }
 
+    static List<PodContainerStatus.Command> getContainerCommand(String state) {
+        List<PodContainerStatus.Command> result = new ArrayList<>();
+        if (Objects.equals(state, PodContainerStatus.State.created.name())) {
+            result.add(PodContainerStatus.Command.run);
+            result.add(PodContainerStatus.Command.delete);
+        } else if (Objects.equals(state, PodContainerStatus.State.exited.name())) {
+            result.add(PodContainerStatus.Command.run);
+            result.add(PodContainerStatus.Command.delete);
+        } else if (Objects.equals(state, PodContainerStatus.State.running.name())) {
+            result.add(PodContainerStatus.Command.pause);
+            result.add(PodContainerStatus.Command.stop);
+            result.add(PodContainerStatus.Command.delete);
+        } else if (Objects.equals(state, PodContainerStatus.State.paused.name())) {
+            result.add(PodContainerStatus.Command.run);
+            result.add(PodContainerStatus.Command.stop);
+            result.add(PodContainerStatus.Command.delete);
+        } else if (Objects.equals(state, PodContainerStatus.State.dead.name())) {
+            result.add(PodContainerStatus.Command.delete);
+        }
+        return result;
+    }
+
+    static ContainerType getContainerType(Map<String, String> labels) {
+        String type = labels.get(LABEL_TYPE);
+        if (Objects.equals(type, ContainerType.devmode.name())) {
+            return ContainerType.devmode;
+        } else if (Objects.equals(type, ContainerType.devservice.name())) {
+            return ContainerType.devservice;
+        } else if (Objects.equals(type, ContainerType.packaged.name())) {
+            return ContainerType.packaged;
+        } else if (Objects.equals(type, ContainerType.internal.name())) {
+            return ContainerType.internal;
+        } else if (Objects.equals(type, ContainerType.build.name())) {
+            return ContainerType.build;
+        }
+        return ContainerType.unknown;
+    }
+
     public static void updateStatistics(PodContainerStatus podContainerStatus, Statistics stats) {
         if (stats != null && stats.getMemoryStats() != null) {
             String memoryUsageString = formatMemory(stats.getMemoryStats().getUsage());
@@ -135,6 +174,18 @@ public class DockerUtils {
         } else {
             podContainerStatus.setMemoryInfo("0MiB/0MiB");
             podContainerStatus.setCpuInfo("0%");
+        }
+    }
+
+    static String formatMemory(Long memory) {
+        try {
+            if (memory < (1073741824)) {
+                return formatMiB.format(memory.doubleValue() / 1048576) + "MiB";
+            } else {
+                return formatGiB.format(memory.doubleValue() / 1073741824) + "GiB";
+            }
+        } catch (Exception e) {
+            return "";
         }
     }
 
@@ -163,56 +214,6 @@ public class DockerUtils {
                 previousStats.put(containerName, Tuple2.of(totalUsage, systemUsage));
             }
             return formatCpu.format(cpuUsage) + "%";
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
-    static ContainerType getContainerType(Map<String, String> labels) {
-        String type = labels.get(LABEL_TYPE);
-        if (Objects.equals(type, ContainerType.devmode.name())) {
-            return ContainerType.devmode;
-        } else if (Objects.equals(type, ContainerType.devservice.name())) {
-            return ContainerType.devservice;
-        } else if (Objects.equals(type, ContainerType.packaged.name())) {
-            return ContainerType.packaged;
-        } else if (Objects.equals(type, ContainerType.internal.name())) {
-            return ContainerType.internal;
-        } else if (Objects.equals(type, ContainerType.build.name())) {
-            return ContainerType.build;
-        }
-        return ContainerType.unknown;
-    }
-
-    static List<PodContainerStatus.Command> getContainerCommand(String state) {
-        List<PodContainerStatus.Command> result = new ArrayList<>();
-        if (Objects.equals(state, PodContainerStatus.State.created.name())) {
-            result.add(PodContainerStatus.Command.run);
-            result.add(PodContainerStatus.Command.delete);
-        } else if (Objects.equals(state, PodContainerStatus.State.exited.name())) {
-            result.add(PodContainerStatus.Command.run);
-            result.add(PodContainerStatus.Command.delete);
-        } else if (Objects.equals(state, PodContainerStatus.State.running.name())) {
-            result.add(PodContainerStatus.Command.pause);
-            result.add(PodContainerStatus.Command.stop);
-            result.add(PodContainerStatus.Command.delete);
-        } else if (Objects.equals(state, PodContainerStatus.State.paused.name())) {
-            result.add(PodContainerStatus.Command.run);
-            result.add(PodContainerStatus.Command.stop);
-            result.add(PodContainerStatus.Command.delete);
-        } else if (Objects.equals(state, PodContainerStatus.State.dead.name())) {
-            result.add(PodContainerStatus.Command.delete);
-        }
-        return result;
-    }
-
-    static String formatMemory(Long memory) {
-        try {
-            if (memory < (1073741824)) {
-                return formatMiB.format(memory.doubleValue() / 1048576) + "MiB";
-            } else {
-                return formatGiB.format(memory.doubleValue() / 1073741824) + "GiB";
-            }
         } catch (Exception e) {
             return "";
         }

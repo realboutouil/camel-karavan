@@ -17,6 +17,7 @@
 
 import React from 'react';
 import {
+    ActionGroup,
     Button,
     Modal,
     FormGroup,
@@ -92,7 +93,7 @@ export class GithubModal extends React.Component<Props, State> {
                     this.githubData(result.token);
                 }
             },
-            reason => {
+            (reason: any) => {
                 EventBus.sendAlert('Error', reason.toString(), 'danger');
             });
     }
@@ -101,14 +102,14 @@ export class GithubModal extends React.Component<Props, State> {
         Promise.all([
             GithubApi.getUserInfo(token),
             GithubApi.getUserEmails(token),
-        ]).then(responses =>
-            Promise.all(responses.map(response => response.data))
-        ).then(data => {
+        ]).then((responses: any[]) =>
+            Promise.all(responses.map((response: any) => response.data))
+        ).then((data: any[]) => {
             const name: string =( data[0] as any).name || '';
             const login: string =( data[0] as any).login || '';
-            const email: string = (Array.isArray(data[1]) ? Array.from(data[1]).filter(d => d.primary === true)?.at(0)?.email : '') || '';
+            const email: string = (Array.isArray(data[1]) ? Array.from(data[1]).filter((d: any) => d.primary === true)?.at(0)?.email : '') || '';
             this.setState({token: token, name: name, email:email, owner: login})
-        }).catch(err =>
+        }).catch((err: any) =>
             EventBus.sendAlert('Error', err.toString(), 'danger')
         );
     }
@@ -159,11 +160,15 @@ export class GithubModal extends React.Component<Props, State> {
                 variant={ModalVariant.medium}
                 isOpen={this.props.isOpen}
                 onClose={this.closeModal}
-                actions={[
-                    <Button isLoading={pushing} isDisabled={!pushEnabled} key="confirm" variant="primary" onClick={this.saveAndCloseModal}>Push</Button>,
-                    <Button key="cancel" variant="secondary" onClick={this.closeModal}>Cancel</Button>,
-                    <Button style={{marginLeft: "auto"}} key="login" variant="secondary" onClick={this.githubAuth} icon={<GithubImageIcon/>}>Login</Button>
-                ]}
+                action={
+                    <div className="modal-footer">
+                        <ActionGroup className="deploy-buttons">
+                            <Button isLoading={pushing} isDisabled={!pushEnabled} key="confirm" variant="primary" onClick={this.saveAndCloseModal}>Push</Button>
+                            <Button key="cancel" variant="secondary" onClick={this.closeModal}>Cancel</Button>
+                            <Button style={{marginLeft: "auto"}} key="login" variant="secondary" onClick={this.githubAuth} icon={<GithubImageIcon/>}>Login</Button>
+                        </ActionGroup>
+                    </div>
+                }
             >
                 <Form autoComplete="off" isHorizontal className="create-file-form">
                     <FormGroup label="Repository" fieldId="repository" isRequired>

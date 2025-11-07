@@ -25,10 +25,10 @@ import {
     DescriptionListDescription, DescriptionListGroup, DescriptionListTerm,
     Flex,
     FlexItem, Panel, PanelHeader, PanelMain, PanelMainBody,
-    Text, TextContent, TextVariants,
     Tooltip,
     TooltipPosition
 } from "@patternfly/react-core";
+import {Text, TextContent, TextVariants} from "../designer/utils/PatternFlyCompat";
 import CloseIcon from "@patternfly/react-icons/dist/esm/icons/times-icon";
 import {INTERNAL_COMPONENTS} from "karavan-core/lib/api/ComponentApi";
 
@@ -139,7 +139,7 @@ export function TopologyPropertiesPanel(props: Props) {
             show={selectedIds.length > 0 && nodeData}
             header={getHeader()}
         >
-            <DslProperties designerType={'routes'}/>
+            <DslProperties designerType={'routes'} expressionEditor={undefined}/>
         </TopologySideBar>
     )
 }

@@ -302,7 +302,7 @@ export function KameletDefinitionPropertyCard(props: Props) {
 
 
     return (
-        <Card isClickable isCompact isFlat ouiaId="PropertyCard" className="property-card">
+        <Card isClickable isCompact ouiaId="PropertyCard" className="property-card">
             <CardTitle>
                 {getTitle()}
             </CardTitle>

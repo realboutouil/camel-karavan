@@ -39,6 +39,11 @@ public class DockerComposeConverter {
     private static final String LABELS = "labels";
     private static final String VOLUMES = "volumes";
 
+    public static DockerComposeService fromCode(String code, String serviceName) {
+        DockerCompose compose = fromCode(code);
+        return compose.getServices().get(serviceName);
+    }
+
     public static DockerCompose fromCode(String code) {
         Yaml yaml = new Yaml();
         Map<String, Object> obj = yaml.load(code);
@@ -53,21 +58,6 @@ public class DockerComposeConverter {
         });
         json.put("services", composeServices);
         return json.mapTo(DockerCompose.class);
-    }
-
-    public static DockerComposeService fromCode(String code, String serviceName) {
-        DockerCompose compose = fromCode(code);
-        return compose.getServices().get(serviceName);
-    }
-
-    public static String toCode(DockerCompose compose) {
-        Yaml yaml = new Yaml(new ComposeRepresenter());
-        return yaml.dumpAs(compose, Tag.MAP, DumperOptions.FlowStyle.BLOCK);
-    }
-
-    public static String toCode(DockerComposeService service) {
-        DockerCompose dc = DockerCompose.create(service);
-        return toCode(dc);
     }
 
     private static DockerComposeService convertToDockerComposeService(String name, JsonObject service) {
@@ -118,6 +108,16 @@ public class DockerComposeConverter {
         return ds;
     }
 
+    public static String toCode(DockerComposeService service) {
+        DockerCompose dc = DockerCompose.create(service);
+        return toCode(dc);
+    }
+
+    public static String toCode(DockerCompose compose) {
+        Yaml yaml = new Yaml(new ComposeRepresenter());
+        return yaml.dumpAs(compose, Tag.MAP, DumperOptions.FlowStyle.BLOCK);
+    }
+
     private static class ComposeRepresenter extends Representer {
 
         public ComposeRepresenter() {
@@ -142,7 +142,7 @@ public class DockerComposeConverter {
                 if (Tag.NULL.equals(valueNode.getTag())) {
                     return null;// skip 'null' values
                 }
-                if (propertyValue instanceof String && (((String) propertyValue).isEmpty() || ((String) propertyValue).isBlank()) ) {
+                if (propertyValue instanceof String && (((String) propertyValue).isEmpty() || ((String) propertyValue).isBlank())) {
                     return null;// skip '' values
                 }
                 if (valueNode instanceof CollectionNode) {

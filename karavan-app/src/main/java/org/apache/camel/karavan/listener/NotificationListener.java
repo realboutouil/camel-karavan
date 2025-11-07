@@ -22,6 +22,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.model.Project;
 
 import java.util.UUID;
@@ -29,6 +30,7 @@ import java.util.UUID;
 import static org.apache.camel.karavan.KaravanEvents.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class NotificationListener {
 
     public static final String NOTIFICATION_ADDRESS_SYSTEM = "karavanSystem";
@@ -41,8 +43,7 @@ public class NotificationListener {
     public static final String EVENT_CONFIG_SHARED = "configShared";
     public static final String EVENT_IMAGES_LOADED = "imagesLoaded";
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = NOTIFICATION_ERROR, blocking = true, ordered = true)
     public void onErrorHappened(JsonObject event) throws Exception {
@@ -54,6 +55,22 @@ public class NotificationListener {
         } else {
             sendSystem(eventId, EVENT_ERROR, className, event);
         }
+    }
+
+    void send(String userId, String eventId, String evenName, String className, JsonObject data) {
+        eventBus.publish(userId, data, new DeliveryOptions()
+                .addHeader(NOTIFICATION_HEADER_EVENT_ID, eventId != null ? eventId : UUID.randomUUID().toString())
+                .addHeader(NOTIFICATION_HEADER_EVENT_NAME, evenName)
+                .addHeader(NOTIFICATION_HEADER_CLASS_NAME, className)
+        );
+    }
+
+    void sendSystem(String eventId, String evenName, String className, JsonObject data) {
+        eventBus.publish(NOTIFICATION_ADDRESS_SYSTEM, data, new DeliveryOptions()
+                .addHeader(NOTIFICATION_HEADER_EVENT_ID, eventId != null ? eventId : UUID.randomUUID().toString())
+                .addHeader(NOTIFICATION_HEADER_EVENT_NAME, evenName)
+                .addHeader(NOTIFICATION_HEADER_CLASS_NAME, className)
+        );
     }
 
     @ConsumeEvent(value = NOTIFICATION_CONFIG_SHARED, blocking = true, ordered = true)
@@ -88,21 +105,5 @@ public class NotificationListener {
         } else {
             sendSystem(eventId, EVENT_COMMIT, Project.class.getSimpleName(), JsonObject.mapFrom(p));
         }
-    }
-
-    void send(String userId, String eventId, String evenName, String className, JsonObject data) {
-        eventBus.publish(userId, data, new DeliveryOptions()
-                .addHeader(NOTIFICATION_HEADER_EVENT_ID, eventId != null ? eventId : UUID.randomUUID().toString())
-                .addHeader(NOTIFICATION_HEADER_EVENT_NAME, evenName)
-                .addHeader(NOTIFICATION_HEADER_CLASS_NAME, className)
-        );
-    }
-
-    void sendSystem(String eventId, String evenName, String className, JsonObject data) {
-        eventBus.publish(NOTIFICATION_ADDRESS_SYSTEM, data, new DeliveryOptions()
-                .addHeader(NOTIFICATION_HEADER_EVENT_ID, eventId != null ? eventId : UUID.randomUUID().toString())
-                .addHeader(NOTIFICATION_HEADER_EVENT_NAME, evenName)
-                .addHeader(NOTIFICATION_HEADER_CLASS_NAME, className)
-        );
     }
 }

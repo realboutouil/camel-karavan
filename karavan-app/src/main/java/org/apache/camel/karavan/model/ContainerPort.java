@@ -17,42 +17,25 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Schema(description = "Container port mapping configuration")
 public class ContainerPort {
 
-    Integer privatePort;
-    Integer publicPort;
-    String type;
+    @Schema(description = "Private (container) port number", example = "80")
+    private Integer privatePort;
 
-    public ContainerPort() {
-    }
+    @Schema(description = "Public (host) port number", example = "8080")
+    private Integer publicPort;
 
-    public ContainerPort(Integer privatePort, Integer publicPort, String type) {
-        this.privatePort = privatePort;
-        this.publicPort = publicPort;
-        this.type = type;
-    }
-
-    public Integer getPrivatePort() {
-        return privatePort;
-    }
-
-    public void setPrivatePort(Integer privatePort) {
-        this.privatePort = privatePort;
-    }
-
-    public Integer getPublicPort() {
-        return publicPort;
-    }
-
-    public void setPublicPort(Integer publicPort) {
-        this.publicPort = publicPort;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
+    @Schema(description = "Protocol type (tcp/udp)", example = "tcp")
+    private String type;
 }

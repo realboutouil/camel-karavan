@@ -22,30 +22,24 @@ import {
     Switch,
     ExpandableSection,
     TextArea,
-    Chip,
     TextInputGroup,
     TextInputGroupMain,
     TextInputGroupUtilities,
-    ChipGroup,
     Button,
-    Text,
     Tooltip,
     Card,
     InputGroup,
     SelectOptionProps,
     InputGroupItem,
-    TextVariants,
     ValidatedOptions,
     FormHelperText,
     HelperText,
     HelperTextItem,
 } from '@patternfly/react-core';
-import {
-    Select,
-    SelectVariant,
-    SelectDirection,
-    SelectOption
-} from '@patternfly/react-core/deprecated';
+import {Text, TextVariants, Chip} from '../../utils/PatternFlyCompat';
+// NOTE: These imports are temporary until migration to PatternFly v6 Select
+// @ts-ignore
+import {Select, SelectVariant, SelectDirection, SelectOption, ChipGroup} from '@patternfly/react-core';
 import '../../karavan.css';
 import './DslPropertyField.css';
 import "@patternfly/patternfly/patternfly.css";
@@ -578,10 +572,10 @@ export function DslPropertyField(props: Props) {
                 className={valueChangedClassName}
                 variant={SelectVariant.single}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
                 selections={value}
                 isOpen={isSelectOpen(property.name)}
                 aria-labelledby={property.name}
@@ -604,10 +598,10 @@ export function DslPropertyField(props: Props) {
                 className={valueChangedClassName}
                 variant={SelectVariant.single}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
                 selections={value}
                 isOpen={isSelectOpen(property.name)}
                 id={property.name}
@@ -639,15 +633,15 @@ export function DslPropertyField(props: Props) {
                 placeholderText="Select Media Type"
                 variant={SelectVariant.typeahead}
                 aria-label={property.name}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     openSelect(property.name, isExpanded)
                 }}
-                onSelect={(e, value, isPlaceholder) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
+                onSelect={(e: any, value: any, isPlaceholder?: boolean) => propertyChanged(property.name, (!isPlaceholder ? value : undefined))}
                 selections={value}
                 isOpen={isSelectOpen(property.name)}
                 isCreatable={false}
                 isInputFilterPersisted={false}
-                onFilter={(e, text) => getMediaTypeSelectOptions(text)}
+                onFilter={(e: any, text: string) => getMediaTypeSelectOptions(text)}
                 aria-labelledby={property.name}
                 direction={SelectDirection.down}
             >
@@ -713,11 +707,11 @@ export function DslPropertyField(props: Props) {
                         placeholderText="Select or type an URI"
                         variant={SelectVariant.typeahead}
                         aria-label={property.name}
-                        onClear={event => propertyChanged(property.name, undefined, undefined)}
-                        onToggle={(_event, isExpanded) => {
+                        onClear={(event: any) => propertyChanged(property.name, undefined, undefined)}
+                        onToggle={(_event: any, isExpanded: boolean) => {
                             openSelect(property.name, isExpanded)
                         }}
-                        onSelect={(e, value, isPlaceholder) => {
+                        onSelect={(e: any, value: any, isPlaceholder?: boolean) => {
                             propertyChanged(property.name, (!isPlaceholder ? value : undefined), undefined)
                         }}
                         selections={value}
@@ -786,7 +780,7 @@ export function DslPropertyField(props: Props) {
                         </div>
                     else
                         return (
-                            <Card key={property + "-" + index} className="object-value" isFlat isRounded>
+                            <Card key={property + "-" + index} className="object-value">
                                 {getMultiObjectFieldProps(property, value, v, index)}
                             </Card>
                         )
@@ -896,7 +890,7 @@ export function DslPropertyField(props: Props) {
         return (
             <ExpandableSection
                 toggleText={label}
-                onToggle={(_event, isExpanded) => {
+                onToggle={(_event: any, isExpanded: boolean) => {
                     setIsShowAdvanced(prevState => {
                         if (isExpanded && !isShowAdvanced.includes(label)) {
                             prevState = [...prevState, label]
@@ -1050,8 +1044,7 @@ export function DslPropertyField(props: Props) {
             <FormGroup
                 className='dsl-property-form-group'
                 label={props.hideLabel ? undefined : getLabel(property, value, isKamelet)}
-                isRequired={property.required}
-                labelIcon={isParameter(property) ? undefined : getLabelIcon(property)}>
+                isRequired={property.required}>
                 {value !== undefined && ["ExpressionDefinition", "ExpressionSubElementDefinition"].includes(property.type)
                     && getExpressionField(property, value)}
                 {property.isObject && !property.isArray && !["ExpressionDefinition", "ExpressionSubElementDefinition"].includes(property.type)

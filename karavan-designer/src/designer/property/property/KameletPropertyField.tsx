@@ -19,11 +19,14 @@ import {
     InputGroup,
     Button,
     Tooltip,
-    Text,
     InputGroupItem,
     ValidatedOptions,
     FormHelperText, HelperText, HelperTextItem, FormGroup, Popover, Switch, TextInputGroupMain, TextInputGroupUtilities, TextInputGroup
 } from '@patternfly/react-core';
+import {Text} from '../../utils/PatternFlyCompat';
+// NOTE: These imports are temporary until migration to PatternFly v6 Select
+// @ts-ignore
+import {Select, SelectDirection, SelectOption, SelectVariant} from '@patternfly/react-core';
 import '../../karavan.css';
 import './KameletPropertyField.css';
 import "@patternfly/patternfly/patternfly.css";
@@ -31,7 +34,6 @@ import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclam
 import {Property} from "karavan-core/lib/model/KameletModels";
 import {ConfigurationSelectorModal} from "./ConfigurationSelectorModal";
 import {usePropertiesHook} from "../usePropertiesHook";
-import {Select, SelectDirection, SelectOption, SelectVariant} from "@patternfly/react-core/deprecated";
 import {useDesignerStore} from "../../DesignerStore";
 import {shallow} from "zustand/shallow";
 import {isSensitiveFieldValid} from "../../utils/ValidatorUtils";
@@ -173,10 +175,10 @@ export function KameletPropertyField(props: Props) {
                     placeholderText="Select or type an URI"
                     variant={SelectVariant.typeahead}
                     aria-label={property.id}
-                    onToggle={(_event, isExpanded) => {
+                    onToggle={(_event: any, isExpanded: boolean) => {
                         openSelect(property.id, isExpanded)
                     }}
-                    onSelect={(e, value, isPlaceholder) => {
+                    onSelect={(e: any, value: any, isPlaceholder?: boolean) => {
                         parametersChanged(property.id, value);
                         setCheckChanges(false);
                     }}
@@ -272,25 +274,7 @@ export function KameletPropertyField(props: Props) {
                 className='kamelet-property-form-group'
                 label={getLabel(property, value)}
                 fieldId={id}
-                isRequired={ props.required}
-                labelIcon={
-                    <Popover
-                        position={"left"}
-                        headerContent={property.title}
-                        bodyContent={property.description}
-                        footerContent={
-                            <div>
-                                {property.default !== undefined &&
-                                    <div>Default: {property.default.toString()}</div>}
-                                {property.example !== undefined && <div>Example: {property.example}</div>}
-                            </div>
-                        }>
-                        <button type="button" aria-label="More info" onClick={e => e.preventDefault()}
-                                className="pf-v5-c-form__group-label-help">
-                            <HelpIcon />
-                        </button>
-                    </Popover>
-                }>
+                isRequired={ props.required}>
                 {/*{property.type === 'string' && getStringInput()}*/}
                 {['string','integer', 'int', 'number'].includes(property.type) && getSpecialStringInput()}
                 {property.type === 'boolean' && <Switch

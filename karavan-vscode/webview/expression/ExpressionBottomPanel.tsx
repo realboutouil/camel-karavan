@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 import React from 'react';
-import {ClipboardCopy, Text, TextContent} from '@patternfly/react-core';
+import {ClipboardCopy} from '@patternfly/react-core';
+import {Text, TextContent} from '../designer/utils/PatternFlyCompat';
 import './ExpressionModalEditor.css'
 import {Table, Tbody, Td, Tr} from "@patternfly/react-table";
 import {Context, ExpressionFunctions, ExpressionVariables} from "./ExpressionContextModel";

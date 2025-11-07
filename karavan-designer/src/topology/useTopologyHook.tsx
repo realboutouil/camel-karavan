@@ -15,46 +15,51 @@
  * limitations under the License.
  */
 import {shallow} from "zustand/shallow";
-import {useFilesStore, useFileStore} from "../api/ProjectStore";
+// import {useFilesStore, useFileStore} from "../api/ProjectStore"; // Not available in standalone designer
 import {EventBus} from "../designer/utils/EventBus";
 import {CamelDefinitionYaml} from "karavan-core/lib/api/CamelDefinitionYaml";
 import {CamelDefinitionApiExt} from "karavan-core/lib/api/CamelDefinitionApiExt";
 import {RouteDefinition} from "karavan-core/lib/model/CamelDefinition";
-import {ProjectService} from "../api/ProjectService";
+// import {ProjectService} from "../api/ProjectService"; // Not available in standalone designer
 
 export function useTopologyHook() {
 
-    const [setFile] = useFileStore((s) => [s.setFile], shallow);
-    const [files] = useFilesStore((s) => [s.files], shallow);
+    // const [setFile] = useFileStore((s) => [s.setFile], shallow); // Not available in standalone designer
+    // const [files] = useFilesStore((s) => [s.files], shallow); // Not available in standalone designer
 
     function selectFile(fileName: string) {
-        const file = files.filter(f => f.name === fileName)?.at(0);
-        if (file) {
-            setFile('select', file);
-        }
+        // Stub implementation for standalone designer
+        // In karavan-app, this would select a file from the project store
+        console.log('selectFile called with:', fileName);
+        // const file = files.filter(f => f.name === fileName)?.at(0);
+        // if (file) {
+        //     setFile('select', file);
+        // }
     }
 
     function setDisabled(fileName: string, elementId: string, enable: boolean) {
-        try {
-            const file = files.filter(f => f.name === fileName)?.at(0);
-            if (file) {
-                const integration = CamelDefinitionYaml.yamlToIntegration(file.name, file?.code);
-                const element = CamelDefinitionApiExt.findElementById(integration, elementId);
-                if (element) {
-                    if (element.dslName === 'RouteDefinition') {
-                        (element as RouteDefinition).autoStartup = enable;
-                    } else {
-                        (element as any).disabled = enable;
-                    }
-                    const newIntegration = CamelDefinitionApiExt.updateIntegrationRouteElement(integration, element);
-                    file.code = CamelDefinitionYaml.integrationToYaml(newIntegration);
-                    ProjectService.updateFile(file, true);
-                }
-
-            }
-        } catch (e: any) {
-            EventBus.sendAlert('Error disabling Route', e?.message);
-        }
+        // Stub implementation for standalone designer
+        // In karavan-app, this would update the file in the project
+        console.log('setDisabled called with:', fileName, elementId, enable);
+        // try {
+        //     const file = files.filter(f => f.name === fileName)?.at(0);
+        //     if (file) {
+        //         const integration = CamelDefinitionYaml.yamlToIntegration(file.name, file?.code);
+        //         const element = CamelDefinitionApiExt.findElementById(integration, elementId);
+        //         if (element) {
+        //             if (element.dslName === 'RouteDefinition') {
+        //                 (element as RouteDefinition).autoStartup = enable;
+        //             } else {
+        //                 (element as any).disabled = enable;
+        //             }
+        //             const newIntegration = CamelDefinitionApiExt.updateIntegrationRouteElement(integration, element);
+        //             file.code = CamelDefinitionYaml.integrationToYaml(newIntegration);
+        //             ProjectService.updateFile(file, true);
+        //         }
+        //     }
+        // } catch (e: any) {
+        //     EventBus.sendAlert('Error disabling Route', e?.message);
+        // }
     }
 
     return {
