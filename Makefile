@@ -165,7 +165,7 @@ docker-build-app-oidc: ## Build karavan-app OIDC container image with Jib
 
 docker-build-devmode: ## Build karavan-devmode container image with Docker
 	@echo "$(GREEN)Building karavan-devmode container image with Docker...$(NC)"
-	docker buildx build --platform linux/amd64,linux/arm64 \
+	docker buildx build --platform linux/amd64 \
 		-t apache/camel-karavan-devmode:4.14.2 \
 		-f karavan-devmode/Dockerfile \
 		karavan-devmode
