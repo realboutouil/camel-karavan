@@ -1,0 +1,153 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Karavan Default Configuration
+# Override these values in environment-specific files (e.g., application-local.yml)
+
+karavan:
+  appName: karavan
+  title: Apache Camel Karavan
+  version: 4.14.2
+
+  camel:
+    status:
+      interval: 2s
+
+  container:
+    status:
+      interval: 2s
+    statistics:
+      interval: 10s
+
+  devmode:
+    image: ghcr.io/apache/camel-karavan-devmode:4.14.2
+    service:
+      account: karavan
+
+  builder:
+    service:
+      account: karavan
+
+  secret:
+    name: karavan
+
+  cache:
+    state:
+      path: ./cache-data
+
+  docker:
+    network: karavan
+
+  keycloak:
+    url: http://localhost:8079
+    realm: karavan
+    frontend:
+      clientId: frontend
+    backend:
+      clientId: backend
+      secret: karavan
+
+  # Git repository configuration (required - must be overridden)
+  git:
+    branch: main
+
+  # Container image registry configuration (required - must be overridden)
+  container-image:
+    registry-username: ''
+    registry-password: ''
+
+quarkus:
+  http:
+    auth:
+      proactive: false
+      permission:
+        public:
+          paths: /public/*,/static/*,/robots.txt,/favicon.ico
+          policy: permit
+          methods: GET
+    enable-compression: true
+
+  oidc:
+    tenant-enabled: false
+    discovery-enabled: false
+    auth-server-url: ${karavan.keycloak.url}/realms/${karavan.keycloak.realm}
+    client-id: ${karavan.keycloak.backend.clientId}
+    credentials:
+      secret: ${karavan.keycloak.backend.secret}
+    application-type: service
+    tls:
+      verification: none
+    roles:
+      source: accesstoken
+
+  keycloak:
+    devservices:
+      enabled: false
+
+  quinoa:
+    ci: false
+    enable-spa-routing: true
+    package-manager-install:
+      node-version: 22.14.0
+    dev-server:
+      port: 3003
+      check-timeout: 60000
+    ignored-path-prefixes: /ui,/public,/api/,/auth
+
+  log:
+    level: INFO
+
+  banner:
+    enabled: false
+
+  package:
+    jar:
+      type: uber-jar
+
+  docker:
+    dockerfile-jvm-path: src/main/docker/Dockerfile
+
+  container-image:
+    builder: docker
+
+  kubernetes-client:
+    trust-certs: true
+    connection-timeout: 2000
+    request-timeout: 10000
+    devservices:
+      enabled: false
+
+  health:
+    extensions:
+      enabled: false
+
+# Profile: OIDC Authentication
+"%oidc":
+  karavan:
+    auth: oidc
+  quarkus:
+    oidc:
+      enabled: true
+    http:
+      auth:
+        basic: false
+
+# Profile: Public API Documentation
+"%public":
+  quarkus:
+    swagger-ui:
+      always-include: true

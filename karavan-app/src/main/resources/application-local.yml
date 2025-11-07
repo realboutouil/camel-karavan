@@ -1,0 +1,115 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Local Development Profile Configuration
+# This file overrides default values from application.yml for local development
+#
+# Prerequisites:
+# 1. Run docker-compose to start Forgejo and Registry:
+#    cd docs/install/karavan-docker
+#    docker-compose -f docker-compose-local.yaml up -d forgejo forgejo-init registry
+#
+# 2. Run Karavan in dev mode:
+#    mvn clean compile quarkus:dev -Dquarkus.profile=local,public -f karavan-app
+#
+# Services:
+# - Forgejo (Git):  http://localhost:3000 (username: karavan, password: karavan)
+# - Registry:       localhost:5555 → registry:5000
+#
+# Security:
+# - Authentication is DISABLED for local development (sessionId mode, no OIDC/Keycloak)
+# - All endpoints are accessible without authentication
+# - This is for development purposes only - DO NOT use in production!
+
+karavan:
+  # Force Docker infrastructure (not Kubernetes) for local development
+  infrastructure: docker
+
+  # Disable internal Git/Registry installation (using external docker-compose services)
+  git-install-gitea: false
+  image-registry-install: false
+
+  # Container monitoring intervals
+  container:
+    status:
+      interval: 2s
+    statistics:
+      interval: 10s
+
+  # Docker network configuration
+  docker:
+    network: karavan
+
+  # Git repository configuration (using Forgejo from docker-compose)
+  # Note: Forgejo is accessible at localhost:3000 from the host machine
+  git:
+    repository: http://localhost:3000/karavan/karavan.git
+    username: karavan
+    password: karavan
+    branch: main
+
+  # Container image registry configuration (using Registry from docker-compose)
+  container-image:
+    group: karavan
+    registry-username: ''
+    registry-password: ''
+    registry: localhost:5000
+
+  # Cache and state persistence
+  cache:
+    state:
+      path: ./cache-data
+
+  # DevMode configuration
+  devmode:
+    image: ghcr.io/apache/camel-karavan-devmode:4.14.2
+
+# Quarkus local development overrides
+quarkus:
+  http:
+    host: localhost
+    auth:
+      # Disable authentication for local development
+      proactive: false
+
+  # Disable OIDC completely for local development
+  oidc:
+    enabled: false
+    tenant-enabled: false
+    discovery-enabled: false
+
+  # Disable Keycloak dev services
+  keycloak:
+    devservices:
+      enabled: false
+
+  kubernetes-client:
+    devservices:
+      enabled: false
+
+  quinoa:
+    ci: false
+    package-manager-install: true
+    dev-server:
+      port: 3003
+      check-timeout: 60000
+
+  log:
+    level: INFO
+    category:
+      "org.apache.camel.karavan":
+        level: DEBUG
