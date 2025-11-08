@@ -86,7 +86,7 @@ export function App() {
         ).then(data => {
             const kamelets: string[] = [];
             data[0].split("\n---\n").map(c => c.trim()).forEach(z => kamelets.push(z));
-            KameletApi.saveCustomKamelets(kamelets, true);
+            KameletApi.saveCamelKamelets(kamelets, true);
 
             const jsons: string[] = [];
             JSON.parse(data[1]).forEach((c: any) => jsons.push(JSON.stringify(c)));
@@ -185,7 +185,8 @@ export function App() {
                 return (
                     <TopologyTab
                         files={[new IntegrationFile("demo.camel.yaml", yaml)]}
-                        onClickAddRouteConfiguration={() => {}}
+                        onSetFile={fileName => {}}
+                        onClickAddRoute={() => {}}
                         onClickAddREST={() => {}}
                         onClickAddBean={() => {}}
                         onClickAddKamelet={() => {}}

@@ -59,7 +59,7 @@ export function KameletTypesOutCard() {
     }
 
     return (
-        <Card isClickable isCompact ouiaId="PropertyCard" className="property-card">
+        <Card isClickable isCompact isFlat ouiaId="PropertyCard" className="property-card">
             <CardTitle>
                 Dependencies
             </CardTitle>

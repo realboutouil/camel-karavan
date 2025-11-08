@@ -16,26 +16,26 @@
  */
 
 import React, {useEffect} from 'react';
-import {Flex, FlexItem, PageSection} from '@patternfly/react-core';
+import {
+    Flex,
+    FlexItem, PageSection
+} from '@patternfly/react-core';
 import '../designer/karavan.css';
-import {useAppConfigStore, useFilesStore, useFileStore, useProjectStore, useWizardStore} from "@/api/ProjectStore";
-import {PackageTab} from "./package/PackageTab";
-import {ProjectService} from "@/api/ProjectService";
+import {FilesTab} from "./files/FilesTab";
+import {useAppConfigStore, useFilesStore, useFileStore, useProjectStore, useWizardStore} from "../api/ProjectStore";
+import {TraceTab} from "./trace/TraceTab";
+import {ProjectBuildTab} from "./builder/ProjectBuildTab";
+import {ProjectService} from "../api/ProjectService";
 import {shallow} from "zustand/shallow";
-import {ImagesPanel} from "./package/ImagesPanel";
+import {ImagesPanel} from "./builder/ImagesPanel";
+import {ProjectContainerTab} from "./container/ProjectContainerTab";
 import {IntegrationFile} from "karavan-core/lib/model/IntegrationDefinition";
-import {TopologyTab} from "@/topology/TopologyTab";
+import {TopologyTab} from "../topology/TopologyTab";
 import {Buffer} from "buffer";
-import {BUILD_IN_PROJECTS, ProjectFile, ProjectType} from "@/api/ProjectModels";
+import {BUILD_IN_PROJECTS, ProjectType} from "../api/ProjectModels";
 import {ReadmeTab} from "./readme/ReadmeTab";
 import {BeanWizard} from "./beans/BeanWizard";
 import {CreateIntegrationModal} from "./files/CreateIntegrationModal";
-import {DslSelector} from "@/designer/selector/DslSelector";
-import {useSelectorStore} from "@/designer/DesignerStore";
-import {KaravanApi} from "@/api/KaravanApi";
-import {EventBus} from "@/designer/utils/EventBus";
-import {FilesTab} from "./files/FilesTab";
-import {useProjectHook} from "@/project/useProjectHook";
 
 export function ProjectPanel() {
 
@@ -44,14 +44,7 @@ export function ProjectPanel() {
     const [setFile] = useFileStore((s) => [s.setFile], shallow);
     const [files, setFiles, setSelectedFileNames] = useFilesStore((s) => [s.files, s.setFiles, s.setSelectedFileNames], shallow);
     const [setShowWizard] = useWizardStore((s) => [s.setShowWizard], shallow)
-    const [showSelector, isRouteTemplate] = useSelectorStore((s) => [s.showSelector, s.isRouteTemplate], shallow)
-
-    const projectFunctions = useProjectHook;
-    const {createNewRouteFile} = projectFunctions();
-
-    const iFiles = files.map(f => new IntegrationFile(f.name, f.code));
-    const codes = iFiles.map(f => f.code).join("");
-    const key = Buffer.from(codes).toString('base64');
+    const isDev = config.environment === 'dev';
 
     useEffect(() => {
         onRefresh();
@@ -62,7 +55,7 @@ export function ProjectPanel() {
             setFiles([]);
             setSelectedFileNames([]);
             ProjectService.refreshProjectData(project.projectId);
-            setTab(project.type !== ProjectType.integration ? 'files' : tab);
+            setTab(project.type !== ProjectType.normal ? 'files' : tab);
         }
     }
 
@@ -70,49 +63,53 @@ export function ProjectPanel() {
         return BUILD_IN_PROJECTS.includes(project.projectId);
     }
 
+    function selectFile(fileName: string) {
+        const file = files.filter(f => f.name === fileName)?.at(0);
+        if (file) {
+            setFile('select', file);
+        }
+    }
+
     const buildIn = isBuildIn();
     const isTopology = tab === 'topology';
 
-
-    function saveNewFile(file: ProjectFile, designerTab?: "routes" | "rest" | "beans" | "kamelet") {
-        KaravanApi.saveProjectFile(file, (result, fileRes) => {
-            if (result) {
-                EventBus.sendAlert("Success", "File successfully created", "success");
-                ProjectService.refreshProjectData(project.projectId);
-                if (file.code) {
-                    setFile('select', file, designerTab);
-                } else {
-                    setFile("none");
-                }
-            } else {
-                EventBus.sendAlert("Error creating file", fileRes?.response?.data, "danger");
-            }
-        })
-    }
+    const iFiles = files.map(f => new IntegrationFile(f.name, f.code));
+    const codes = iFiles.map(f => f.code).join("");
+    const key = Buffer.from(codes).toString('base64')
 
     return isTopology
         ? (
             <>
-
                 <TopologyTab key={key}
                              hideToolbar={false}
-                             files={iFiles}
-                             projectFunctions={projectFunctions}
+                             files={files.map(f => new IntegrationFile(f.name, f.code))}
+                             onClickAddRoute={() => setFile('create', undefined, 'routes')}
+                             onClickAddREST={() => setFile('create', undefined, 'rest')}
+                             onClickAddKamelet={() => setFile('create', undefined, 'kamelet')}
+                             onClickAddBean={() => {
+                                 // setFile('create', undefined, 'beans');
+                                 setShowWizard(true)
+                             }}
+                             onSetFile={(fileName) => selectFile(fileName)}
+                             isDev={isDev}
                 />
                 <CreateIntegrationModal/>
-                {showSelector && <DslSelector onDslSelect={createNewRouteFile}/>}
                 <BeanWizard/>
             </>
         )
-        : (<PageSection hasBodyWrapper={false} padding={{default: 'noPadding'}} className="scrollable-out">
-            <PageSection hasBodyWrapper={false} isFilled padding={{default: 'noPadding'}} className="scrollable-in">
+        : (<PageSection padding={{default: 'noPadding'}} className="scrollable-out">
+            <PageSection isFilled padding={{default: 'noPadding'}} className="scrollable-in">
                 <Flex direction={{default: "column"}} spaceItems={{default: "spaceItemsNone"}}>
                     {tab === 'files' && <FlexItem><FilesTab/></FlexItem>}
-                    {!buildIn && tab === 'package' && <FlexItem><PackageTab/></FlexItem>}
-                    {!buildIn && tab === 'package' && config.infrastructure !== 'kubernetes' && <FlexItem><ImagesPanel/></FlexItem>}
+                    {!buildIn && tab === 'trace' && project && <TraceTab/>}
+                    {!buildIn && tab === 'build' && <FlexItem><ProjectBuildTab/></FlexItem>}
+                    {!buildIn && tab === 'build' && config.infrastructure !== 'kubernetes' &&
+                        <FlexItem><ImagesPanel/></FlexItem>}
+                    {!buildIn && tab === 'container' && <FlexItem><ProjectContainerTab/></FlexItem>}
+                    {!buildIn && tab === 'container' && config.infrastructure !== 'kubernetes' &&
+                        <FlexItem><ImagesPanel/></FlexItem>}
                     {!buildIn && tab === 'readme' && <FlexItem><ReadmeTab/></FlexItem>}
                 </Flex>
             </PageSection>
         </PageSection>)
 }
-

@@ -15,52 +15,56 @@
  * limitations under the License.
  */
 
-import {SsoApi} from "@/auth/SsoApi";
-import {fetchEventSource} from "@microsoft/fetch-event-source";
+import {SsoApi} from "./SsoApi";
+import {EventStreamContentType, fetchEventSource} from "@microsoft/fetch-event-source";
 import {ProjectEventBus} from "./ProjectEventBus";
-import {AuthApi, getCurrentUser} from "@/auth/AuthApi";
+import {KaravanApi} from "./KaravanApi";
 
 export class LogWatchApi {
 
     static async fetchData(type: 'container' | 'build' | 'none', podName: string, controller: AbortController) {
         const fetchData = async () => {
-            const headers: Record<string, string> = {
-                Accept: "text/event-stream",
-            };
-            const url = `/ui/logwatch/${type}/${podName}/${getCurrentUser()?.username ?? ""}`;
-            if (AuthApi.authType === 'oidc' && SsoApi.keycloak?.token && SsoApi.keycloak?.token?.length > 0) {
+            const headers: any = { Accept: "text/event-stream" };
+            let ready = false;
+            if (KaravanApi.authType === 'oidc' && SsoApi.keycloak?.token && SsoApi.keycloak?.token?.length > 0) {
                 headers.Authorization = "Bearer " + SsoApi.keycloak?.token;
+                ready = true;
+            } else if (KaravanApi.authType === 'basic' && KaravanApi.basicToken?.length > 0) {
+                headers.Authorization = "Basic " + KaravanApi.basicToken
+                ready = true;
+            } else {
+                ready = KaravanApi.authType === 'public';
             }
-            await fetchEventSource(url, {
-                method: "GET", headers: headers, signal: controller.signal, credentials: "include",
-                async onopen(response) {
-                    const ct = response.headers.get("content-type") || "";
-                    if (response.ok && ct.toLowerCase().startsWith("text/event-stream")) {
-                        return; // good to go
-                    }
-                    // Handle auth and other errors explicitly
-                    if (response.status === 401) {
-                        console.warn("SSE unauthorized: session missing/expired.");
-                        // Optional: trigger a global event/router redirect here
-                        throw new Error("unauthorized");
-                    }
-                    console.error("Unexpected SSE response", response.status, ct);
-                    throw new Error(`bad-sse-response:${response.status}`);
-                },
-                onmessage(event) {
-                    if (event.event !== 'ping') {
-                        ProjectEventBus.sendLog('add', event.data);
-                    } else {
-                        console.log('Logger SSE Ping', event);
-                    }
-                },
-                onclose() {
-                    console.log("Connection closed by the server");
-                },
-                onerror(err) {
-                    console.log("There was an error from server", err);
-                },
-            });
+            if (ready) {
+                await fetchEventSource('/ui/logwatch/' + type + '/' + podName + '/'+ KaravanApi.getUserId(), {
+                    method: "GET",
+                    headers: headers,
+                    signal: controller.signal,
+                    async onopen(response) {
+                        if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
+                            return; // everything's good
+                        } else if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+                            // client-side errors are usually non-retriable:
+                            console.log("Server side error ", response);
+                        } else {
+                            console.log("Error ", response);
+                        }
+                    },
+                    onmessage(event) {
+                        if (event.event !== 'ping') {
+                            ProjectEventBus.sendLog('add', event.data);
+                        } else {
+                            console.log('Logger SSE Ping', event);
+                        }
+                    },
+                    onclose() {
+                        console.log("Connection closed by the server");
+                    },
+                    onerror(err) {
+                        console.log("There was an error from server", err);
+                    },
+                });
+            }
         };
         return fetchData();
     }

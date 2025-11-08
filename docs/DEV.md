@@ -19,12 +19,12 @@ mvn clean compile exec:java -Dexec.mainClass="org.apache.camel.karavan.generator
 2. Install Karavan core library
 ```
 cd  karavan-core
-npm install
+yarn install
 ```
 
-3. Build Karavan app  
+3. Build Karavan app
 ```
-mvn clean package -f karavan-app -Dquarkus.profile=public 
+mvn clean package -f karavan-app -Dquarkus.profile=public
 ```
 
 ## How to build Karavan VS Code extension
@@ -36,14 +36,14 @@ mvn clean compile exec:java -Dexec.mainClass="org.apache.camel.karavan.generator
 2. Install Karavan core library
 ```
 cd  karavan-core
-npm install
+yarn install
 ```
 
-3. Build Karavan VS Code extension  
+3. Build Karavan VS Code extension
 ```
 cd karavan-vscode
-npm update && npm install 
-npm install -g @vscode/vsce
+yarn upgrade && yarn install
+yarn global add @vscode/vsce
 vsce package
 ```
 
@@ -116,9 +116,9 @@ The project includes a pre-configured `application-local.properties` file for lo
      "copy-designer": "xcopy ..\\..\\..\\..\\karavan-designer\\src\\designer src\\designer /E/H/Y",
      "copy-knowledgebase": "xcopy ..\\..\\..\\..\\karavan-designer\\src\\knowledgebase src\\knowledgebase /E/H/Y",
      "copy-topology": "xcopy ..\\..\\..\\..\\karavan-designer\\src\\topology src\\topology /E/H/Y",
-     "copy-code": "npm run copy-designer && npm run copy-knowledgebase && npm run copy-topology",
-     "start": "set PORT=3003 && npm run copy-code && react-scripts start",
-     "build": "npm run copy-code && DISABLE_ESLINT_PLUGIN=true react-scripts build"
+     "copy-code": "yarn copy-designer && yarn copy-knowledgebase && yarn copy-topology",
+     "start": "set PORT=3003 && yarn copy-code && react-scripts start",
+     "build": "yarn copy-code && DISABLE_ESLINT_PLUGIN=true react-scripts build"
    }
    ```
 

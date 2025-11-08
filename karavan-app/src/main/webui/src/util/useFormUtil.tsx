@@ -1,39 +1,19 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import React, {useState} from 'react';
-import {Controller, FieldError, UseFormReturn,} from "react-hook-form";
+import {
+    Controller,
+    FieldError,
+    UseFormReturn,
+} from "react-hook-form";
 import {
     Button,
-    Content,
-    ContentVariants,
     Flex,
     FormGroup,
     FormHelperText,
     FormSelect,
     FormSelectOption,
     HelperText,
-    HelperTextItem,
-    Switch,
-    TextArea,
-    TextInput,
-    TextInputGroup,
-    TextInputGroupMain,
-    TextInputGroupUtilities
+    HelperTextItem, Switch, Text, TextArea,
+    TextInput, TextInputGroup, TextInputGroupMain, TextVariants
 } from "@patternfly/react-core";
 import "./form-util.css"
 import ShowIcon from "@patternfly/react-icons/dist/js/icons/eye-icon";
@@ -44,21 +24,7 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
 
     const [showPassword, setShowPassword] = useState<boolean>(false);
 
-    function getHelper(text?: string) {
-        if (text) {
-            return (
-                <FormHelperText>
-                    <HelperText>
-                        <HelperTextItem variant={'default'}>
-                            {text}
-                        </HelperTextItem>
-                    </HelperText>
-                </FormHelperText>
-            )
-        } else return (<></>)
-    }
-
-    function getError(error: FieldError | undefined) {
+    function getHelper(error: FieldError | undefined) {
         if (error) {
             return (
                 <FormHelperText>
@@ -69,43 +35,30 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                     </HelperText>
                 </FormHelperText>
             )
-        } else return (<></>)
+        }
     }
 
     function getTextField(fieldName: string, label: string,
                           validate?: ((value: string, formValues: any) => boolean | string) | Record<string, (value: string, formValues: any) => boolean | string>,
-                          type: | 'text' | 'date' | 'datetime-local' | 'email' | 'month' | 'number' | 'password' | 'search' | 'tel' | 'time' | 'url' = 'text',
-                          onChange?: ((value: any) => void), hint?: string, onBlur?: () => void) {
+                          type: | 'text' | 'date' | 'datetime-local' | 'email' | 'month' | 'number' | 'password' | 'search' | 'tel' | 'time' | 'url' = 'text') {
         const {control, setValue, getValues, formState: {errors}} = formContext;
-        const rules: any = {};
-        if (validate !== undefined) {
-            rules.required = "Required field";
-        }
-        if (validate) {
-            rules.validate = validate;
-        }
         return (
-            <FormGroup label={label} fieldId={fieldName} isRequired={validate !== undefined}>
+            <FormGroup label={label} fieldId={fieldName} isRequired>
                 <Controller
-                    rules={rules}
+                    rules={{required: "Required field", validate: validate}}
                     control={control}
                     name={fieldName}
                     render={() => (
-                        <TextInput className="text-field" type={type}
-                                   id={`${fieldName}-text`}
-                                   required={validate !== undefined}
-                                   value={getValues(fieldName) || ''}
+                        <TextInput className="text-field" type={type} id={fieldName}
+                                   value={getValues(fieldName)}
                                    validated={!!errors[fieldName] ? 'error' : 'default'}
                                    onChange={(_, v) => {
                                        setValue(fieldName, v, {shouldValidate: true});
-                                       onChange?.(v)
                                    }}
-                                   onBlur={event => onBlur?.()}
                         />
                     )}
                 />
-                {getError((errors as any)[fieldName])}
-                {getHelper(hint)}
+                {getHelper((errors as any)[fieldName])}
             </FormGroup>
         )
     }
@@ -120,8 +73,8 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                     name={fieldName}
                     render={() => (
                         <TextArea type="text"
-                                  id={`${fieldName}-text`}
-                                  value={getValues(fieldName) || ''}
+                                  id={fieldName}
+                                  value={getValues(fieldName)}
                                   validated={!!errors[fieldName] ? 'error' : 'default'}
                             // ref={ref}
                                   onChange={(e, v) => {
@@ -131,50 +84,10 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                         />
                     )}
                 />
-                {getError((errors as any)[fieldName])}
+                {getHelper((errors as any)[fieldName])}
             </FormGroup>
         )
     }
-
-    // function getEditor(fieldName: string, label: string, validate?: ((value: string, formValues: any) => boolean | string) | Record<string, (value: string, formValues: any) => boolean | string>) {
-    //     const {setValue, getValues, control, formState: {errors}} = formContext;
-    //     const val = getValues(fieldName);
-    //     const valStr =
-    //         (val === undefined || val === null || val === '')
-    //             ? ''
-    //             : typeof val === 'object' ? JSON.stringify(val, null, 2) : '' + val?.toString()
-    //     return (
-    //         <Controller
-    //             rules={{required: "Required field", validate: validate}}
-    //             control={control}
-    //             name={fieldName}
-    //             render={() => (
-    //                 <div style={{padding: '6px'}}>
-    //                 <Editor
-    //                     height="600px"
-    //                     defaultLanguage={'json'}
-    //                     theme={'light'}
-    //                     value={valStr}
-    //                     className={'code-editor'}
-    //                     options={{
-    //                         lineNumbers: "off",
-    //                         folding: false,
-    //                         lineNumbersMinChars: 10,
-    //                         showUnused: false,
-    //                         fontSize: 12,
-    //                         minimap: {enabled: false}
-    //                     }}
-    //                     onChange={(value, ev) => {
-    //                         if (value) {
-    //                             setValue(fieldName, value, {shouldValidate: true});
-    //                         }
-    //                     }}
-    //                 />
-    //                 </div>
-    //             )}
-    //         />
-    //     )
-    // }
 
     function getPasswordField(fieldName: string, label: string, validate?: ((value: string, formValues: any) => boolean | string) | Record<string, (value: string, formValues: any) => boolean | string>) {
         validate = {
@@ -192,9 +105,9 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                     control={control}
                     name={fieldName}
                     render={() => (
-                        <div style={{display: 'flex'}}>
+                        <div style={{display:'flex'}}>
                             <TextInput className="text-field" type={showPassword ? "text" : "password"} id={fieldName}
-                                       value={getValues(fieldName) || ''}
+                                       value={getValues(fieldName)}
                                        validated={!!errors[fieldName] ? 'error' : 'default'}
                                        onChange={(_, v) => {
                                            setValue(fieldName, v, {shouldValidate: true});
@@ -206,7 +119,7 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                         </div>
                     )}
                 />
-                {getError((errors as any)[fieldName])}
+                {getHelper((errors as any)[fieldName])}
             </FormGroup>
         )
     }
@@ -228,7 +141,7 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                                             setValue(fieldName, v, {shouldValidate: true});
                                         }}
                     >
-                        <Content className='text-field-prefix' component={ContentVariants.p}>{prefix}</Content>
+                        <Text className='text-field-prefix' component={TextVariants.p}>{prefix}</Text>
                     </TextInputGroupMain>
                 </TextInputGroup>
                 {getHelper((errors as any)[fieldName])}
@@ -247,18 +160,16 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                     control={control}
                     name={fieldName}
                     render={() => (
-                        <TextInputGroup>
-                            <TextInputGroupMain type={type} id={fieldName}
+                        <div style={{display: 'flex'}}>
+                            <TextInput className="form-util-text-field" type={type} id={fieldName}
                                        value={getValues(fieldName)}
-                                       // validated={!!errors[fieldName] ? 'error' : 'default'}
+                                       validated={!!errors[fieldName] ? 'error' : 'default'}
                                        onChange={(_, v) => {
                                            setValue(fieldName, v, {shouldValidate: true});
                                        }}
                             />
-                            <TextInputGroupUtilities style={{paddingRight: '4px'}}>
-                                <Content id={fieldName + ':suffix'}>{suffix}</Content>
-                            </TextInputGroupUtilities>
-                        </TextInputGroup>
+                            <TextInput className="form-util-text-field-suffix" id={fieldName + ':suffix'} value={suffix} isDisabled/>
+                        </div>
                     )}
                 />
                 {getHelper((errors as any)[fieldName])}
@@ -302,7 +213,7 @@ export function useFormUtil(formContext: UseFormReturn<any>) {
                         return (<Switch
                             id={key}
                             label={label}
-                            
+                            labelOff={label}
                             isChecked={watch(fieldName) !== undefined && watch(fieldName).includes(key)}
                             onChange={(e, v) => {
                                 const vals: string[] = watch(fieldName);

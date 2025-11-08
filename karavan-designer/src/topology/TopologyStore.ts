@@ -18,6 +18,7 @@
 import {createWithEqualityFn} from "zustand/traditional";
 import {shallow} from "zustand/shallow";
 
+
 interface TopologyState {
     selectedIds: string []
     fileName?: string
@@ -29,10 +30,6 @@ interface TopologyState {
     setNodeData: (nodeData: any) => void
     showGroups: boolean
     setShowGroups: (showGroups: boolean) => void
-    showBeans: boolean
-    setShowBeans: (showBeans: boolean) => void
-    showLegend: boolean
-    setShowLegend: (showLegend: boolean) => void
 }
 
 export const useTopologyStore = createWithEqualityFn<TopologyState>((set) => ({
@@ -63,18 +60,6 @@ export const useTopologyStore = createWithEqualityFn<TopologyState>((set) => ({
     setShowGroups: (showGroups: boolean) => {
         set((state: TopologyState) => {
             return {showGroups: showGroups};
-        });
-    },
-    showBeans: true,
-    setShowBeans: (showBeans: boolean) => {
-        set((state: TopologyState) => {
-            return {showBeans: showBeans};
-        });
-    },
-    showLegend: false,
-    setShowLegend: (showLegend: boolean) => {
-        set((state: TopologyState) => {
-            return {showLegend: showLegend};
         });
     },
 }), shallow)

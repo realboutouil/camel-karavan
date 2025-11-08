@@ -16,24 +16,27 @@
  */
 
 import React, {useEffect} from 'react';
-import {Flex, FlexItem, PageSection, Tab, Tabs,} from '@patternfly/react-core';
+import {
+    Flex,
+    FlexItem,
+    PageSection, Tab, Tabs,
+} from '@patternfly/react-core';
 import './ProjectPage.css';
-import {BUILD_IN_PROJECTS, Project} from "@/api/ProjectModels";
-import {useAppConfigStore, useFilesStore, useFileStore, useProjectsStore, useProjectStore} from "@/api/ProjectStore";
-import {MainToolbar} from "@/components/MainToolbar";
+import {ProjectToolbar} from "./ProjectToolbar";
+import {ProjectLogPanel} from "../log/ProjectLogPanel";
+import {BUILD_IN_PROJECTS, Project} from "../api/ProjectModels";
+import {useAppConfigStore, useFilesStore, useFileStore, useProjectsStore, useProjectStore} from "../api/ProjectStore";
+import {MainToolbar} from "../designer/MainToolbar";
 import {ProjectTitle} from "./ProjectTitle";
-import {shallow} from "zustand/shallow";
-import {useNavigate, useParams} from "react-router-dom";
-import {ProjectService} from "@/api/ProjectService";
 import {ProjectPanel} from "./ProjectPanel";
-import {DeveloperManager} from "@/developer/DeveloperManager";
+import {FileEditor} from "../editor/FileEditor";
+import {shallow} from "zustand/shallow";
+import {useParams} from "react-router-dom";
+import {KaravanApi} from "../api/KaravanApi";
+import {ImageDownloadToolbar} from "./ImageDownloadToolbar";
+import {ProjectService} from "../api/ProjectService";
 
-interface Props {
-    projectToolbar: React.ReactNode
-    startToolbar: React.ReactNode
-}
-
-export function ProjectPage(props: Props) {
+export function ProjectPage() {
 
     const [config] = useAppConfigStore((state) => [state.config], shallow);
     const {file, operation} = useFileStore();
@@ -43,14 +46,13 @@ export function ProjectPage(props: Props) {
         useProjectStore((s) => [s.project, s.setProject, s.tabIndex, s.setTabIndex, s.refreshTrace], shallow);
 
     let {projectId} = useParams();
-    const navigate = useNavigate();
 
     useEffect(() => {
         const p = projects.filter(project => project.projectId === projectId).at(0);
         if (p) {
             setProject(p, "select");
-        } else {
-            navigate('/');
+        } else if (projectId) {
+            KaravanApi.getProject(projectId, project1 => setProject(project1, "select"));
         }
         return () => {
             setProject(new Project(), "none");
@@ -58,14 +60,14 @@ export function ProjectPage(props: Props) {
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(() => refreshData(), 700)
+        const interval = setInterval(() => refreshData(), 1300)
         return () => clearInterval(interval);
     }, [tabIndex, refreshTrace, project]);
 
-    function refreshData() {
+    function refreshData(){
         ProjectService.refreshAllContainerStatuses();
         ProjectService.refreshCamelStatus(project.projectId, config.environment);
-        if (tabIndex === 'package') {
+        if (tabIndex === 'build' || tabIndex === 'container') {
             ProjectService.refreshAllDeploymentStatuses();
             ProjectService.refreshImages(project.projectId);
         } else if (tabIndex === 'trace' && refreshTrace) {
@@ -86,29 +88,36 @@ export function ProjectPage(props: Props) {
     }
 
     const showFilePanel = file !== undefined && operation === 'select';
-
+    const isKubernetes = config.infrastructure === 'kubernetes'
+    const containerTabName = isKubernetes ? "Deployment" : "Container"
+    const isDevEnvironment = config.environment === 'dev';
+    const showBuildTab = isKubernetes || isDevEnvironment;
     return (
-        <PageSection hasBodyWrapper={false} className="project-page" padding={{default: 'noPadding'}}>
-            <PageSection hasBodyWrapper={false} className="tools-section" padding={{default: 'noPadding'}}>
-                <MainToolbar title={<ProjectTitle/>} tools={props.projectToolbar} toolsStart={isBuildIn() ? <></> : props.startToolbar}/>
+        <PageSection className="project-page" padding={{default: 'noPadding'}}>
+            <PageSection className="tools-section" padding={{default: 'noPadding'}}>
+                <MainToolbar title={<ProjectTitle/>} tools={<ProjectToolbar/>} toolsStart={<ImageDownloadToolbar/>}/>
             </PageSection>
-            <Flex direction={{default: "column"}} spaceItems={{default: "spaceItemsNone"}}>
-                <FlexItem className="project-tabs">
-                    {showTabs() &&
-                        <Tabs activeKey={tabIndex} onSelect={(event, tabIndex) => {
-                            setTabIndex(tabIndex);
-                        }}>
-                            {<Tab eventKey="topology" title="Topology"/>}
-                            <Tab eventKey="files" title="Files"/>
-                            {<Tab eventKey="trace" title="Trace"/>}
-                            {<Tab eventKey="package" title="Package"/>}
-                            {hasReadme() && <Tab eventKey="readme" title="Readme"/>}
-                        </Tabs>
-                    }
-                </FlexItem>
-            </Flex>
-            {showFilePanel && <DeveloperManager/>}
+            <PageSection className="tabs-section" padding={{default: 'noPadding'}}>
+                <Flex direction={{default: "column"}} spaceItems={{default: "spaceItemsNone"}}>
+                    <FlexItem className="project-tabs">
+                        {showTabs() &&
+                            <Tabs activeKey={tabIndex} onSelect={(event, tabIndex) => {
+                                setTabIndex(tabIndex);
+                            }}>
+                                {<Tab eventKey="topology" title="Topology"/>}
+                                <Tab eventKey="files" title="Files"/>
+                                {<Tab eventKey="trace" title="Trace"/>}
+                                {showBuildTab && <Tab eventKey="build" title="Build"/>}
+                                <Tab eventKey="container" title={containerTabName}/>
+                                {hasReadme() && <Tab eventKey="readme" title="Readme"/>}
+                            </Tabs>
+                        }
+                    </FlexItem>
+                </Flex>
+            </PageSection>
+            {showFilePanel && <FileEditor projectId={project.projectId}/>}
             {!showFilePanel && <ProjectPanel/>}
+            <ProjectLogPanel/>
         </PageSection>
     )
 }

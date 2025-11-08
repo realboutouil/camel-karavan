@@ -16,13 +16,29 @@
  */
 
 import React, {useEffect, useState} from 'react';
-import {Badge, Button, Flex, FlexItem, Label, Spinner, ToggleGroup, ToggleGroupItem, Tooltip, TooltipPosition} from '@patternfly/react-core';
-import {BoltIcon, DevIcon, ErrorCircleOIcon, RunningIcon, StopIcon, TrashIcon} from '@patternfly/react-icons';
-import {useAppConfigStore, useLogStore, useProjectStore, useStatusesStore} from "@/api/ProjectStore";
-import {ProjectService} from "@/api/ProjectService";
+import {
+    Badge,
+    Button,
+    Flex,
+    FlexItem,
+    Label,
+    Spinner,
+    Switch,
+    Tooltip,
+    TooltipPosition
+} from '@patternfly/react-core';
+import '../designer/karavan.css';
+import RocketIcon from "@patternfly/react-icons/dist/esm/icons/rocket-icon";
+import ReloadIcon from "@patternfly/react-icons/dist/esm/icons/bolt-icon";
+import DeleteIcon from "@patternfly/react-icons/dist/esm/icons/trash-icon";
+import {useAppConfigStore, useLogStore, useProjectStore, useStatusesStore} from "../api/ProjectStore";
+import {ProjectService} from "../api/ProjectService";
 import {shallow} from "zustand/shallow";
-import {ContainerStatus} from "@/api/ProjectModels";
+import UpIcon from "@patternfly/react-icons/dist/esm/icons/running-icon";
+import DownIcon from "@patternfly/react-icons/dist/esm/icons/error-circle-o-icon";
+import {ContainerStatus} from "../api/ProjectModels";
 import "./DevModeToolbar.css"
+import StopIcon from "@patternfly/react-icons/dist/js/icons/stop-icon";
 
 interface Props {
     reloadOnly?: boolean
@@ -33,7 +49,7 @@ export function DevModeToolbar(props: Props) {
     const [config] = useAppConfigStore((state) => [state.config], shallow);
     const [project, refreshTrace] = useProjectStore((state) => [state.project, state.refreshTrace], shallow)
     const [containers] = useStatusesStore((state) => [state.containers], shallow);
-    const [runType, setRunType] = React.useState<'normal' | 'verbose' | 'compile'>('normal');
+    const [verbose, setVerbose] = useState(false);
     const [showSpinner, setShowSpinner] = useState(false);
     const [setShowLog] = useLogStore((s) => [s.setShowLog], shallow);
     const [currentContainerStatus] = useState<ContainerStatus>();
@@ -41,7 +57,7 @@ export function DevModeToolbar(props: Props) {
     const isKubernetes = config.infrastructure === 'kubernetes'
     const containerStatuses = containers.filter(c => c.projectId === project.projectId) || [];
 
-    const containersProject = containerStatuses.filter(c => c.type === 'packaged') || [];
+    const containersProject = containerStatuses.filter(c => c.type === 'project') || [];
     const allRunning = containersProject.length > 0
         && (containersProject.filter(c => c.state === 'running').length === containersProject.length);
 
@@ -51,7 +67,7 @@ export function DevModeToolbar(props: Props) {
     const showLogDevMode = containerDevMode && ['running', 'paused', 'exited'].includes(containerDevMode?.state);
     const inTransit = containerDevMode?.inTransit;
     const color = (isRunning || allRunning) ? "green" : "grey";
-    const icon = (isRunning || allRunning) ? <RunningIcon/> : <ErrorCircleOIcon/>;
+    const icon = (isRunning || allRunning) ? <UpIcon/> : <DownIcon/>;
     const inDevMode = containerDevMode?.type === 'devmode';
 
     useEffect(() => {
@@ -67,7 +83,7 @@ export function DevModeToolbar(props: Props) {
         {containersProject.length > 0 && <FlexItem>
             <Label icon={icon} color={color}>
                 <Tooltip content={"Show log"} position={TooltipPosition.bottom}>
-                    <Button className='karavan-labeled-button'
+                    <Button className='labeled-button'
                             variant="link"
                             isDisabled={!allRunning}
                             onClick={e => {}}>
@@ -75,13 +91,13 @@ export function DevModeToolbar(props: Props) {
                     </Button>
                 </Tooltip>
                 {containersProject.length > 1 && <Badge isRead={!allRunning}>{containersProject.length}</Badge>}
-                <Badge isRead>{'packaged'}</Badge>
+                <Badge isRead>{'project'}</Badge>
             </Label>
         </FlexItem>}
         {containerDevMode?.containerId && <FlexItem>
             <Label icon={icon} color={color}>
                 <Tooltip content={"Show log"} position={TooltipPosition.bottom}>
-                    <Button className='karavan-labeled-button'
+                    <Button className='labeled-button'
                             variant="link"
                             isDisabled={!showLogDevMode}
                             onClick={e =>
@@ -93,47 +109,34 @@ export function DevModeToolbar(props: Props) {
             </Label>
         </FlexItem>}
         {!isRunning && <FlexItem className="dev-action-button-place">
-            <ToggleGroup aria-label="Devmode run type">
-                <ToggleGroupItem
-                    text="Normal"
-                    buttonId="toggle-group-normal"
-                    isSelected={runType === 'normal'}
-                    onChange={event => setRunType('normal')}
+            <Tooltip content="Verbose" position={TooltipPosition.bottom}>
+                <Switch aria-label="verbose"
+                        id="verbose"
+                        isChecked={verbose}
+                        onChange={(_, checked) => setVerbose(checked)}
                 />
-                <ToggleGroupItem
-                    text="Verbose"
-                    buttonId="toggle-group-verbose"
-                    isSelected={runType === 'verbose'}
-                    onChange={event => setRunType('verbose')}
-                />
-                <ToggleGroupItem
-                    text="Compile"
-                    buttonId="toggle-group-compile"
-                    isSelected={runType === 'compile'}
-                    onChange={event => setRunType('compile')}
-                />
-            </ToggleGroup>
+            </Tooltip>
         </FlexItem>}
         {!isRunning && <FlexItem className="dev-action-button-place">
-            <Tooltip content="Run in Developer mode" position={TooltipPosition.bottomEnd}>
+            <Tooltip content="Run in developer mode" position={TooltipPosition.bottomEnd}>
                 <Button className="dev-action-button" size="sm"
                         isDisabled={(!(commands.length === 0) && !commands.includes('run')) || inTransit}
                         variant={"primary"}
-                        icon={<DevIcon/>}
+                        icon={<RocketIcon/>}
                         onClick={() => {
                             setShowSpinner(true);
-                            ProjectService.startDevModeContainer(project, runType === 'verbose', runType === 'compile');
+                            ProjectService.startDevModeContainer(project, verbose);
                         }}>
                     {"Run"}
                 </Button>
             </Tooltip>
         </FlexItem>}
-        {isRunning && inDevMode && (runType !== 'compile') && <FlexItem className="dev-action-button-place">
+        {isRunning && inDevMode && <FlexItem className="dev-action-button-place">
             <Tooltip content="Reload" position={TooltipPosition.bottomEnd}>
                 <Button className="project-button dev-action-button" size="sm"
                         isDisabled={inTransit}
                         variant={"primary"}
-                        icon={<BoltIcon/>}
+                        icon={<ReloadIcon/>}
                         onClick={() => ProjectService.reloadDevModeCode(project)}>Reload
                 </Button>
             </Tooltip>
@@ -156,7 +159,7 @@ export function DevModeToolbar(props: Props) {
                 <Button className="dev-action-button" size="sm"
                         isDisabled={!commands.includes('delete') || inTransit}
                         variant={"control"}
-                        icon={<TrashIcon/>}
+                        icon={<DeleteIcon/>}
                         onClick={() => {
                             setShowSpinner(true);
                             ProjectService.deleteDevModeContainer(project);

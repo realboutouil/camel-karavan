@@ -16,54 +16,59 @@
  */
 
 import React, {useState} from 'react';
-import {Content, ContentVariants, HelperText, HelperTextItem, Switch} from '@patternfly/react-core';
-import {useProjectStore} from "@/api/ProjectStore";
-import {ProjectService} from "@/api/ProjectService";
+import {
+    Button, HelperText, HelperTextItem,
+    Modal,
+    ModalVariant, Switch, Text, TextContent, TextVariants,
+} from '@patternfly/react-core';
+import '../designer/karavan.css';
+import {useProjectStore} from "../api/ProjectStore";
+import {ProjectService} from "../api/ProjectService";
 import {shallow} from "zustand/shallow";
-import {ModalConfirmation} from "@/components/ModalConfirmation";
 
-export function DeleteProjectModal() {
+export function DeleteProjectModal () {
 
     const [project, operation] = useProjectStore((s) => [s.project, s.operation], shallow);
     const [deleteContainers, setDeleteContainers] = useState(false);
 
-    function closeModal() {
+    function closeModal () {
         useProjectStore.setState({operation: "none"})
     }
 
-    function confirmAndCloseModal() {
+    function confirmAndCloseModal () {
         ProjectService.deleteProject(project, deleteContainers);
         useProjectStore.setState({operation: "none"});
     }
 
-    const isOpen = operation === "delete";
+    const isOpen= operation === "delete";
     return (
-        <ModalConfirmation
-            isOpen={isOpen}
-            message={
-                <>
-                    <Content>
-                        <Content component={ContentVariants.h3}>Delete project <b>{project?.projectId}</b> ?</Content>
+            <Modal
+                title="Confirmation"
+                variant={ModalVariant.small}
+                isOpen={isOpen}
+                onClose={() => closeModal()}
+                actions={[
+                    <Button key="confirm" variant="danger" onClick={e => confirmAndCloseModal()}>Delete</Button>,
+                    <Button key="cancel" variant="link"
+                            onClick={e => closeModal()}>Cancel</Button>
+                ]}
+                onEscapePress={e => closeModal()}>
+                    <TextContent>
+                        <Text component={TextVariants.h3}>Delete project <b>{project?.projectId}</b> ?</Text>
                         <HelperText>
                             <HelperTextItem variant="warning">
                                 Project will be also deleted from <b>git</b> repository
                             </HelperTextItem>
                         </HelperText>
-                        <Content component={ContentVariants.p}></Content>
-                        <Content component={ContentVariants.p}></Content>
-                    </Content>
+                        <Text component={TextVariants.p}></Text>
+                        <Text component={TextVariants.p}></Text>
+                    </TextContent>
                     <Switch
                         label={"Delete related container and/or deployments?"}
                         isChecked={deleteContainers}
                         onChange={(_, checked) => setDeleteContainers(checked)}
                         isReversed
                     />
-                </>
-            }
-            btnConfirm='Delete'
-            btnConfirmVariant='danger'
-            onConfirm={() => confirmAndCloseModal()}
-            onCancel={() => closeModal()}
-        />
+            </Modal>
     )
 }

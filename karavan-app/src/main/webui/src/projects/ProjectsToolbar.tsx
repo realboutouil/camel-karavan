@@ -16,13 +16,20 @@
  */
 
 import React from 'react';
-import {Button, TextInput, Toolbar, ToolbarContent, ToolbarItem,} from '@patternfly/react-core';
-import {PlusIcon} from '@patternfly/react-icons';
-import {useProjectsStore, useProjectStore} from "@/api/ProjectStore";
-import {Project} from "@/api/ProjectModels";
+import {
+    Toolbar,
+    ToolbarContent,
+    ToolbarItem,
+    TextInput,
+    Button,
+} from '@patternfly/react-core';
+import './ProjectsPage.css';
+import PlusIcon from '@patternfly/react-icons/dist/esm/icons/plus-icon';
+import {useProjectsStore, useProjectStore} from "../api/ProjectStore";
+import {Project} from "../api/ProjectModels";
 import {shallow} from "zustand/shallow";
 import RefreshIcon from "@patternfly/react-icons/dist/esm/icons/sync-alt-icon";
-import {ProjectService} from "@/api/ProjectService";
+import {ProjectService} from "../api/ProjectService";
 
 export function ProjectsToolbar () {
 

@@ -18,20 +18,22 @@
 import React, {useEffect} from 'react';
 import {
     Button,
+    Modal,
+    ModalVariant,
     Form,
-    Alert,
-    FormAlert, Modal, ModalVariant, ModalHeader, ModalBody, ModalFooter
+    Alert, FormAlert,
 } from '@patternfly/react-core';
-import {useFileStore, useProjectStore} from "@/api/ProjectStore";
-import {getProjectFileTypeName, ProjectFile, RESERVED_WORDS} from "@/api/ProjectModels";
-import {ProjectService} from "@/api/ProjectService";
+import '../../designer/karavan.css';
+import {useFileStore, useProjectStore} from "../../api/ProjectStore";
+import {getProjectFileTypeName, ProjectFile} from "../../api/ProjectModels";
+import {ProjectService} from "../../api/ProjectService";
 import {shallow} from "zustand/shallow";
 import {SubmitHandler, useForm} from "react-hook-form";
-import {EventBus} from "@/designer/utils/EventBus";
-import {isValidFileName} from "@/util/StringUtils";
-import {useFormUtil} from "@/util/useFormUtil";
-import {KaravanApi} from "@/api/KaravanApi";
-import {CodeUtils} from "@/util/CodeUtils";
+import {EventBus} from "../../designer/utils/EventBus";
+import {isValidFileName} from "../../util/StringUtils";
+import {useFormUtil} from "../../util/useFormUtil";
+import {KaravanApi} from "../../api/KaravanApi";
+import {CodeUtils} from "../../util/CodeUtils";
 
 export function CreateFileModal() {
 
@@ -90,34 +92,32 @@ export function CreateFileModal() {
 
     return (
         <Modal
+            title="Create file"
             variant={ModalVariant.small}
-            isOpen={["create"].includes(operation)}
+            isOpen={["create", "copy"].includes(operation)}
             onClose={closeModal}
             onKeyDown={onKeyDown}
-        >
-            <ModalHeader title='Create file'/>
-            <ModalBody>
-                <Form autoComplete="off" isHorizontal className="create-file-form">
-                    {getTextField('name', 'Name', {
-                        regex: v => isValidFileName(v) || 'Not a valid filename',
-                        length: v => v.length > 5 || 'File name should be longer that 5 characters',
-                        name: v => !RESERVED_WORDS.includes(v) || "Reserved word",
-                    })}
-                    {backendError &&
-                        <FormAlert>
-                            <Alert variant="danger" title={backendError} aria-live="polite" isInline />
-                        </FormAlert>
-                    }
-                </Form>
-            </ModalBody>
-            <ModalFooter>
+            actions={[
                 <Button key="confirm" variant="primary" onClick={handleSubmit(onSubmit)}
                         isDisabled={Object.getOwnPropertyNames(errors).length > 0}
                 >
                     Save
-                </Button>
+                </Button>,
                 <Button key="cancel" variant="secondary" onClick={closeModal}>Cancel</Button>
-            </ModalFooter>
+            ]}
+        >
+            <Form autoComplete="off" isHorizontal className="create-file-form">
+                {getTextField('name', 'Name', {
+                    regex: v => isValidFileName(v) || 'Not a valid filename',
+                    length: v => v.length > 5 || 'File name should be longer that 5 characters',
+                    name: v => !['templates', 'kamelets', 'karavan'].includes(v) || "'templates', 'kamelets', 'karavan' can't be used as filename",
+                })}
+                {backendError &&
+                    <FormAlert>
+                        <Alert variant="danger" title={backendError} aria-live="polite" isInline />
+                    </FormAlert>
+                }
+            </Form>
         </Modal>
     )
 }

@@ -16,14 +16,17 @@
  */
 
 import React, {useEffect} from 'react';
-import {Toolbar, ToolbarContent,} from '@patternfly/react-core';
+import {
+    Toolbar,
+    ToolbarContent,
+} from '@patternfly/react-core';
 import '../designer/karavan.css';
 import {DevModeToolbar} from "./DevModeToolbar";
-import {useAppConfigStore, useFileStore, useProjectStore} from "@/api/ProjectStore";
+import {useAppConfigStore, useFileStore, useProjectStore} from "../api/ProjectStore";
 import {shallow} from "zustand/shallow";
-import {BUILD_IN_PROJECTS,} from "@/api/ProjectModels";
+import {EditorToolbar} from "../editor/EditorToolbar";
+import {BUILD_IN_PROJECTS,} from "../api/ProjectModels";
 import {ResourceToolbar} from "./ResourceToolbar";
-import {EditorToolbar} from "@/developer/EditorToolbar";
 
 export function ProjectToolbar() {
 

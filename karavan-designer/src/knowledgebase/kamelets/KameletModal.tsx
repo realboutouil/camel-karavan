@@ -19,10 +19,10 @@ import {
     Button,
     Modal,
     ActionGroup,
+    Text,
     CardHeader,
     Badge, Flex, CardTitle,
 } from '@patternfly/react-core';
-import {Text} from '../../designer/utils/PatternFlyCompat';
 import '../../designer/karavan.css';
 import {Property} from "karavan-core/lib/model/KameletModels";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
@@ -49,14 +49,14 @@ export function KameletModal() {
             title={kamelet?.spec.definition.title}
             isOpen={isModalOpen}
             onClose={() => setModalOpen(false)}
-            action={
+            actions={[
                 <div className="modal-footer">
                     <ActionGroup className="deploy-buttons">
                         <Button key="cancel" variant="primary"
                                 onClick={e => setModalOpen(false)}>Close</Button>
                     </ActionGroup>
                 </div>
-            }
+            ]}
         >
             <Flex direction={{default: 'column'}} key={kamelet?.metadata.name}
                   className="kamelet-modal-card">

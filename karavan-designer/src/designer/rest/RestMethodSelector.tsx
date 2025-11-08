@@ -17,10 +17,10 @@
 import React from 'react';
 import {
     Badge,
-    Card, CardBody, CardFooter, CardHeader, Gallery, PageSection, PageSectionVariants,
+    Card, CardBody, CardFooter, CardHeader, Gallery, PageSection,
     Tab, Tabs, TabTitleText,
+    Text
 } from '@patternfly/react-core';
-import {Text} from '../utils/PatternFlyCompat';
 import '../karavan.css';
 import {CamelUi} from "../utils/CamelUi";
 import {DslMetaModel} from "../utils/DslMetaModel";
@@ -67,7 +67,7 @@ export function RestMethodSelector(props: Props) {
     }
 
     return (
-        <PageSection variant={dark ? PageSectionVariants.default : PageSectionVariants.default}>
+        <PageSection variant={dark ? "darker" : "light"}>
             <Tabs style={{overflow: 'hidden'}} activeKey="methods" onSelect={event => {}}>
                 <Tab eventKey="methods" title={<TabTitleText>Methods</TabTitleText>}>
                     <Gallery hasGutter className="dsl-gallery">

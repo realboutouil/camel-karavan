@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
 import {KameletApi} from "karavan-core/lib/api/KameletApi";
 import {KameletModel} from "karavan-core/lib/model/KameletModels";
 import {DslMetaModel} from "./DslMetaModel";
@@ -23,7 +22,7 @@ import {CamelMetadataApi} from "karavan-core/lib/model/CamelMetadata";
 import {CamelUtil} from "karavan-core/lib/api/CamelUtil";
 import {CamelDefinitionApiExt} from "karavan-core/lib/api/CamelDefinitionApiExt";
 import {
-    BeanFactoryDefinition, FromDefinition,
+    BeanFactoryDefinition,
     RouteConfigurationDefinition,
     RouteDefinition,
     RouteTemplateDefinition,
@@ -31,7 +30,7 @@ import {
 } from "karavan-core/lib/model/CamelDefinition";
 import {CamelElement, Integration, IntegrationFile} from "karavan-core/lib/model/IntegrationDefinition";
 import {
-    ActivemqIcon, AmqpIcon, ApiIcon,
+    ActivemqIcon, ApiIcon,
     AwsIcon,
     AzureIcon,
     BlockchainIcon,
@@ -92,9 +91,9 @@ import {
     SplitIcon,
     ToIcon,
 } from "../icons/EipIcons";
+import React from "react";
 import {TopologyUtils} from "karavan-core/lib/api/TopologyUtils";
 import {getIntegrations} from "../../topology/TopologyApi";
-import {toKebabCase} from "./ValidatorUtils";
 
 const StepElements: string[] = [
     "AggregateDefinition",
@@ -147,11 +146,14 @@ const StepElements: string[] = [
     "ThreadsDefinition",
     "ThrottleDefinition",
     "ThrowExceptionDefinition",
+    "ToDefinition",
+    "ToDynamicDefinition",
     "TransformDefinition",
     "TransactedDefinition",
     "TryDefinition",
     "UnmarshalDefinition",
-    "ValidateDefinition"
+    "ValidateDefinition",
+    "WireTapDefinition"
 ];
 
 export const camelIcon =
@@ -196,14 +198,6 @@ export class CamelUi {
             return new RouteToCreate(componentName, name)
         }
         return undefined;
-    }
-
-    static createRouteFromComponent = (componentName: string, propertyName: string, propertyValue: string): RouteDefinition => {
-        const description =  propertyValue.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-        const name = toKebabCase(propertyValue);
-        const routeId = 'route-' + name;
-        const newFrom = new FromDefinition({uri: componentName, parameters: {[propertyName]: propertyValue}});
-        return new RouteDefinition({from: newFrom, description: description, id: routeId, nodePrefixId: routeId});
     }
 
     static getSelectorModelTypes = (parentDsl: string | undefined, showSteps: boolean = true, filter: string | undefined = undefined): [string, number][] => {
@@ -301,10 +295,10 @@ export class CamelUi {
     }
 
     static getKameletDslMetaModel = (type: 'source' | "sink" | "action"): DslMetaModel[] => {
-        return KameletApi.getAllKamelets().filter((k: any) => k.metadata.labels["camel.apache.org/kamelet.type"] === type)
-            .map((k: any) => {
+        return KameletApi.getAllKamelets().filter((k) => k.metadata.labels["camel.apache.org/kamelet.type"] === type)
+            .map((k) => {
                 const descriptionLines = k.description().split("\n")
-                    .filter((line: any) => line !== undefined && line.trim().length > 0);
+                    .filter(line => line !== undefined && line.trim().length > 0);
                 const description = descriptionLines.at(0);
                 return new DslMetaModel({
                     dsl: type === 'source' ? "FromDefinition" : "ToDefinition",
@@ -640,9 +634,7 @@ export class CamelUi {
         } else if (title.startsWith("Kafka")) {
             return KafkaIcon();
         } else if (title.startsWith("ActiveMQ")) {
-            return ActivemqIcon();}
-        else if (title.startsWith("AMQP")) {
-            return AmqpIcon();
+            return ActivemqIcon();
         } else if (title.startsWith("GitHub")) {
             return GithubIcon();
         } else if (title.startsWith("Git")) {

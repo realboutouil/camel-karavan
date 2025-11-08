@@ -1,6 +1,6 @@
 {
   "name": "karavan-designer",
-  "version": "4.14.2",
+  "version": "4.10.2",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -23,42 +23,40 @@
     ]
   },
   "dependencies": {
-    "@monaco-editor/react": "^4.7.0",
-    "@patternfly/patternfly": "^6.4.0",
-    "@patternfly/react-core": "^6.4.0",
-    "@patternfly/react-table": "^6.4.0",
-    "@patternfly/react-topology": "^6.4.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@patternfly/patternfly": "^5.4.0",
+    "@patternfly/react-core": "^5.4.0",
+    "@patternfly/react-table": "^5.4.0",
+    "@patternfly/react-topology": "^5.4.0",
     "@types/js-yaml": "4.0.9",
-    "@types/uuid": "11.0.0",
-    "axios": "1.13.2",
-    "html-to-image": "1.11.13",
+    "@types/uuid": "10.0.0",
+    "axios": "1.8.2",
+    "html-to-image": "1.11.11",
     "karavan-core": "file:../karavan-core",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-resizable-panels": "^3.0.6",
-    "rxjs": "7.8.2",
-    "usehooks-ts": "^3.1.1",
-    "uuid": "13.0.0",
-    "zustand": "^5.0.8"
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-resizable-panels": "^2.1.7",
+    "rxjs": "7.8.1",
+    "usehooks-ts": "^3.1.0",
+    "uuid": "10.0.0",
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@svgr/webpack": "^8.1.0",
-    "@types/dagre": "^0.7.53",
-    "@types/node": "24.10.0",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
-    "@typescript-eslint/eslint-plugin": "^8.46.3",
-    "@typescript-eslint/parser": "^8.46.3",
-    "@vitejs/plugin-react": "^5.1.0",
-    "eslint": "^9.39.1",
-    "monaco-editor": "^0.54.0",
-    "typescript": "5.9.3",
-    "vite": "^7.2.2",
-    "vite-plugin-svgr": "^4.5.0",
+    "@types/dagre": "^0.7.52",
+    "@types/node": "20.14.8",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.13.0",
+    "@typescript-eslint/parser": "^8.13.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.20.1",
+    "monaco-editor": "^0.52.2",
+    "typescript": "",
+
+    "vite": "^6.1.0",
+    "vite-plugin-svgr": "^4.3.0",
     "vite-tsconfig-paths": "^5.1.4"
-  },
-  "overrides": {
-    "@babel/runtime": "7.26.10"
   }
 }

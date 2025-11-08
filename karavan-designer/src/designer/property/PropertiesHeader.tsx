@@ -16,7 +16,9 @@
  */
 import React, {useEffect, useState} from 'react';
 import {
+    Text,
     Title,
+    TextVariants,
     ExpandableSection,
     Dropdown,
     MenuToggleElement,
@@ -25,7 +27,6 @@ import {
     DropdownItem, Flex, Popover, FlexItem, Badge, ClipboardCopy,
     Switch, Tooltip, Label, Button,
 } from '@patternfly/react-core';
-import {Text, TextVariants} from '../utils/PatternFlyCompat';
 import './DslProperties.css';
 import "@patternfly/patternfly/patternfly.css";
 import {CamelUi} from "../utils/CamelUi";

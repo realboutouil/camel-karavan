@@ -26,27 +26,23 @@ import {
     Visualization,
     VisualizationProvider,
     VisualizationSurface,
-    LayoutFactory,
-    Layout,
-    Graph,
-    LayoutOptions,
-    SELECTION_EVENT, Model, DagreLayout,
+    DagreLayout,
+    SELECTION_EVENT, Model,
 } from '@patternfly/react-topology';
-import {CustomComponentFactory} from "./CustomComponentFactory";
+import {customComponentFactory, getModel} from "./TopologyApi";
 import {shallow} from "zustand/shallow";
 import {useTopologyStore} from "./TopologyStore";
+import {TopologyPropertiesPanel} from "./TopologyPropertiesPanel";
 import {TopologyToolbar} from "./TopologyToolbar";
 import {useDesignerStore} from "../designer/DesignerStore";
 import {IntegrationFile} from "karavan-core/lib/model/IntegrationDefinition";
 import {TopologyLegend} from "./TopologyLegend";
-import {TopologyBeans} from "./TopologyBeans";
-import {getModel} from "./TopologyApi";
-import {useTopologyHook} from "./useTopologyHook";
 
 interface Props {
     files: IntegrationFile[],
+    onSetFile: (fileName: string) => void
     hideToolbar: boolean
-    onClickAddRouteConfiguration: () => void
+    onClickAddRoute: () => void
     onClickAddREST: () => void
     onClickAddKamelet: () => void
     onClickAddBean: () => void
@@ -55,10 +51,9 @@ interface Props {
 
 export function TopologyTab(props: Props) {
 
-    const [selectedIds, setSelectedIds, setFileName, ranker, setRanker, setNodeData, showGroups, showBeans, showLegend] = useTopologyStore((s) =>
-        [s.selectedIds, s.setSelectedIds, s.setFileName, s.ranker, s.setRanker, s.setNodeData, s.showGroups, s.showBeans, s.showLegend], shallow);
+    const [selectedIds, setSelectedIds, setFileName, ranker, setRanker, setNodeData, showGroups] = useTopologyStore((s) =>
+        [s.selectedIds, s.setSelectedIds, s.setFileName, s.ranker, s.setRanker, s.setNodeData, s.showGroups], shallow);
     const [setSelectedStep] = useDesignerStore((s) => [s.setSelectedStep], shallow)
-    const {selectFile, setDisabled} = useTopologyHook();
 
     function setTopologySelected(model: Model, ids: string []) {
         setSelectedIds(ids);
@@ -78,46 +73,54 @@ export function TopologyTab(props: Props) {
         }
     }
 
-    const customLayoutFactory: LayoutFactory = (type: string, graph: Graph, options?: LayoutOptions): Layout => {
-        return new DagreLayout(graph, {
+    const controller = React.useMemo(() => {
+        const model = getModel(props.files, showGroups);
+        const newController = new Visualization();
+        newController.registerLayoutFactory((_, graph) =>
+            new DagreLayout(graph, {
                 rankdir: 'TB',
-                ranker: "network-simplex",
+                ranker: ranker,
                 nodesep: 20,
                 edgesep: 20,
-                ranksep: 1,
-                // align: 'UL'
-            });
-    };
+                ranksep: 0
+            }));
 
-    const controller = React.useMemo(() => {
-        const model = getModel(props.files, showGroups, selectFile, setDisabled);
-        const controller = new Visualization();
+        newController.registerComponentFactory(customComponentFactory);
 
-        controller.registerLayoutFactory(customLayoutFactory);
-        controller.registerComponentFactory(CustomComponentFactory);
-
-        controller.addEventListener(SELECTION_EVENT, args => setTopologySelected(model, args));
-        // controller1.addEventListener(SELECTION_EVENT, args => {
+        newController.addEventListener(SELECTION_EVENT, args => setTopologySelected(model, args));
+        // newController.addEventListener(SELECTION_EVENT, args => {
         //     console.log(args)
         // });
-        controller.addEventListener(GRAPH_LAYOUT_END_EVENT, () => {
-            controller.getGraph().fit(80);
+        newController.addEventListener(GRAPH_LAYOUT_END_EVENT, () => {
+            newController.getGraph().fit(80);
         });
-        controller.fromModel(model, false);
-        return controller;
+
+        newController.fromModel(model, false);
+        return newController;
     },[]);
 
     React.useEffect(() => {
-        try {
-            setSelectedIds([])
-            const model = getModel(props.files, showGroups, selectFile, setDisabled);
-            controller.fromModel(model, false);
-        } catch (e) {
-            console.error(e);
-        }
-    }, [setSelectedIds, props.files, controller, showGroups]);
+        setSelectedIds([])
+        const model = getModel(props.files, showGroups);
+        controller.fromModel(model, false);
+    }, [ranker, controller, setSelectedIds, props.files, showGroups]);
 
     const controlButtons = React.useMemo(() => {
+        // const customButtons = [
+        //     {
+        //         id: "change-ranker",
+        //         icon: <RankerIcon />,
+        //         tooltip: 'Change Ranker ' + ranker,
+        //         ariaLabel: '',
+        //         callback: (id: any) => {
+        //             if (ranker === 'network-simplex') {
+        //                 setRanker('tight-tree')
+        //             } else {
+        //                 setRanker('network-simplex')
+        //             }
+        //         }
+        //     }
+        // ];
         return createTopologyControlButtons({
             ...defaultControlButtonsOptions,
             zoomInCallback: action(() => {
@@ -142,13 +145,14 @@ export function TopologyTab(props: Props) {
         <TopologyView
             className="topology-panel"
             contextToolbar={!props.hideToolbar
-                ? <TopologyToolbar onClickAddRouteConfiguration={props.onClickAddRouteConfiguration}
+                ? <TopologyToolbar onClickAddRoute={props.onClickAddRoute}
                                    onClickAddBean={props.onClickAddBean}
                                    onClickAddKamelet={props.onClickAddKamelet}
                                    onClickAddREST={props.onClickAddREST}
                                    isDev={props.isDev}
                 />
                 : undefined}
+            sideBar={<TopologyPropertiesPanel onSetFile={props.onSetFile}/>}
             controlBar={
                 <TopologyControlBar
                     controlButtons={controlButtons}
@@ -157,8 +161,7 @@ export function TopologyTab(props: Props) {
         >
             <VisualizationProvider controller={controller}>
                 <VisualizationSurface state={{selectedIds}}/>
-                {showBeans && <TopologyBeans/>}
-                {showLegend && <TopologyLegend/>}
+                <TopologyLegend/>
             </VisualizationProvider>
         </TopologyView>
     );

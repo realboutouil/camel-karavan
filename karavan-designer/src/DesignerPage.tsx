@@ -19,9 +19,8 @@ import {
     Toolbar,
     ToolbarContent,
     ToolbarItem,
-    PageSection, Flex, FlexItem, Button, Tooltip
+    PageSection, TextContent, Text, Flex, FlexItem, Button, Tooltip
 } from '@patternfly/react-core';
-import {TextContent, Text} from './designer/utils/PatternFlyCompat';
 import './designer/karavan.css';
 import DownloadIcon from "@patternfly/react-icons/dist/esm/icons/download-icon";
 import DownloadImageIcon from "@patternfly/react-icons/dist/esm/icons/image-icon";
@@ -82,7 +81,6 @@ export const DesignerPage = (props: Props) => {
                 onInternalConsumerClick={(uri, name, routeId) => {
                     console.log("onInternalConsumerClick", uri, name, routeId)
                 }}
-                onCreateNewRoute={() => console.log("onCreateNewRoute")}
                 files={[new IntegrationFile("demo.camel.yaml", yaml)]}
             />
         )

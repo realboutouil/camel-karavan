@@ -19,8 +19,8 @@ import {
     Button,
     Card,
     CardHeader,
+    Text,
 } from '@patternfly/react-core';
-import {Text} from '../utils/PatternFlyCompat';
 import './DslSelector.css';
 import {CamelUi} from "../utils/CamelUi";
 import {DslMetaModel} from "../utils/DslMetaModel";
@@ -46,7 +46,7 @@ export function DslFastCard (props: Props) {
     const {dsl, index} = props;
 
     return (
-        <Card key={dsl.dsl + index} isCompact isPlain className="dsl-card dsl-fast-card"
+        <Card key={dsl.dsl + index} isCompact isPlain isFlat isRounded className="dsl-card dsl-fast-card"
               onClick={event => selectDsl(event, dsl)}>
             <Button className='fast-delete' variant='link' icon={<TimesIcon/>} onClick={deleteFast}/>
             <CardHeader className='header'>

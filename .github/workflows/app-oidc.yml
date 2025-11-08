@@ -3,7 +3,7 @@ name: Application OIDC
 on:
   push:
     branches: [ main ]
-    paths: ['karavan-app/**', 'karavan-core/**', 'karavan-designer/**', '.github/workflows/app.yml']
+    paths: ['karavan-app/**', 'karavan-core/**', 'karavan-designer/**', '.github/workflows/app-oidc.yml']
   workflow_dispatch:
   pull_request:
     branches: [ main ]
@@ -43,7 +43,7 @@ jobs:
 
       - name: Karavan Core install
         working-directory: ./karavan/karavan-core
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       - name: Build and Push OIDC application with Jib
         working-directory: ./karavan/karavan-app

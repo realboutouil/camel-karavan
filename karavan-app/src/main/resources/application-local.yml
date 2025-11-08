@@ -76,7 +76,7 @@ karavan:
 
   # DevMode configuration
   devmode:
-    image: ghcr.io/apache/camel-karavan-devmode:4.14.2
+    image: apache/camel-karavan-devmode:4.14.2
 
 # Quarkus local development overrides
 quarkus:

@@ -100,13 +100,14 @@ quarkus:
 
   quinoa:
     ci: false
-    enable-spa-routing: true
-    package-manager-install:
-      node-version: 22.14.0
     dev-server:
       port: 3003
       check-timeout: 60000
+    enable-spa-routing: true
     ignored-path-prefixes: /ui,/public,/api/,/auth
+    package-manager: yarn
+    package-manager-install:
+      node-version: 22.14.0
 
   kubernetes-client:
     trust-certs: true

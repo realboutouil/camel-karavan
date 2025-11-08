@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 import React from 'react';
-import {ActionGroup, Badge, Button, CardHeader, CardTitle, Flex, Modal} from '@patternfly/react-core';
-import {Text} from '../../designer/utils/PatternFlyCompat';
+import {ActionGroup, Badge, Button, CardHeader, CardTitle, Flex, Modal, Text,} from '@patternfly/react-core';
 import '../../designer/karavan.css';
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 import {CamelUi} from "../../designer/utils/CamelUi";
@@ -38,14 +37,14 @@ export function EipModal() {
             title={element?.title}
             isOpen={isModalOpen}
             onClose={() => setModalOpen(false)}
-            action={
+            actions={[
                 <div className="modal-footer" key="buttons">
                     <ActionGroup className="deploy-buttons">
                         <Button key="cancel" variant="primary"
                                 onClick={e => setModalOpen(false)}>Close</Button>
                     </ActionGroup>
                 </div>
-            }
+            ]}
         >
             <Flex direction={{default: 'column'}} key={element?.name} className="kamelet-modal-card">
                 <CardHeader actions={{ actions: <><Badge className="badge"

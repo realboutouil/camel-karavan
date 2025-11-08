@@ -18,8 +18,6 @@
 import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
 import viteTsconfigPaths from 'vite-tsconfig-paths'
-import {visualizer} from 'rollup-plugin-visualizer';
-import path from 'path';
 import svgr from 'vite-plugin-svgr';
 
 // https://vitejs.dev/config/
@@ -29,22 +27,43 @@ export default defineConfig({
         svgr(),
         react(),
         viteTsconfigPaths(),
-        visualizer({
-            filename: 'stats.html',
-            template: 'treemap',
-            gzipSize: true,
-            brotliSize: true,
-            open: true
-        })
     ],
     server: {
         // this ensures that the browser opens upon server start
         open: false,
         // this sets a default port to 3000, you can change this
         port: 3003,
+        proxy: {
+            '/public': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/ui': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/api': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/q': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/sse': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                secure: false,
+                ws: true,
+            },
+        },
     },
     build: {
-        // sourcemap: true,
+        sourcemap: false,
         rollupOptions: {
             output: {
                 // vite.config.ts (replace only the manualChunks function body)
@@ -72,6 +91,9 @@ export default defineConfig({
 
                         // --- PatternFly ---
                         if (pkg.startsWith('@patternfly/')) return 'vendor-patternfly';
+
+                        // --- Carbon Icons ---
+                        if (pkg.startsWith('@carbon')) return 'vendor-carbon-icons';
 
                         // --- Known heavy libs (named buckets so you can spot them) ---
                         if (pkg.startsWith('refractor')) return 'vendor-refractor';

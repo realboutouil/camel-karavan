@@ -103,13 +103,11 @@ export function RestDesigner() {
             title="Confirmation"
             isOpen={showDeleteConfirmation}
             onClose={() => setShowDeleteConfirmation(false)}
-            action={
-                <React.Fragment>
-                    <Button key="confirm" variant="primary" onClick={e => deleteElement()}>Delete</Button>
-                    <Button key="cancel" variant="link"
-                            onClick={e => setShowDeleteConfirmation(false)}>Cancel</Button>
-                </React.Fragment>
-            }
+            actions={[
+                <Button key="confirm" variant="primary" onClick={e => deleteElement()}>Delete</Button>,
+                <Button key="cancel" variant="link"
+                        onClick={e => setShowDeleteConfirmation(false)}>Cancel</Button>
+            ]}
             onEscapePress={e => setShowDeleteConfirmation(false)}>
             <div>
                 Delete element from integration?
@@ -168,7 +166,7 @@ export function RestDesigner() {
                 className='dsl-modal'
                 isOpen={showSelector}
                 onClose={() => closeMethodSelector()}
-                action={<React.Fragment />}>
+                actions={{}}>
                 <RestMethodSelector onMethodSelect={onMethodSelect}/>
             </Modal>)
     }

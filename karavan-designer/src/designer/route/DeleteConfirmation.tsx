@@ -37,13 +37,11 @@ export function DeleteConfirmation() {
             title="Confirmation"
             isOpen={showDeleteConfirmation}
             onClose={() => setShowDeleteConfirmation(false)}
-            action={
-                <React.Fragment>
-                    <Button key="confirm" variant="primary" onClick={e => deleteElement()}>Delete</Button>
-                    <Button key="cancel" variant="link"
-                            onClick={e => setShowDeleteConfirmation(false)}>Cancel</Button>
-                </React.Fragment>
-            }
+            actions={[
+                <Button key="confirm" variant="primary" onClick={e => deleteElement()}>Delete</Button>,
+                <Button key="cancel" variant="link"
+                        onClick={e => setShowDeleteConfirmation(false)}>Cancel</Button>
+            ]}
             onEscapePress={e => setShowDeleteConfirmation(false)}>
             <div>
                 {deleteMessage}

@@ -19,15 +19,16 @@ import {
     Button,
     ExpandableSection,
     Form,
+    Text,
     TextInputGroup,
     TextInputGroupMain,
     TextInputGroupUtilities,
+    TextVariants,
     Title,
     ToggleGroup,
     ToggleGroupItem,
     Tooltip,
 } from '@patternfly/react-core';
-import {Text, TextVariants} from '../utils/PatternFlyCompat';
 import '../karavan.css';
 import './DslProperties.css';
 import "@patternfly/patternfly/patternfly.css";
@@ -49,8 +50,7 @@ import TimesIcon from "@patternfly/react-icons/dist/esm/icons/times-icon";
 import {RouteTemplateDefinition} from "karavan-core/lib/model/CamelDefinition";
 
 interface Props {
-    designerType: 'routes' | 'rest' | 'beans',
-    expressionEditor: React.ComponentType<any>;
+    designerType: 'routes' | 'rest' | 'beans'
 }
 
 export function DslProperties(props: Props) {
@@ -127,14 +127,9 @@ export function DslProperties(props: Props) {
         // .filter((p: PropertyMeta) => dslName && !(['RestDefinition', 'GetDefinition', 'PostDefinition', 'PutDefinition', 'PatchDefinition', 'DeleteDefinition', 'HeadDefinition'].includes(dslName) && ['param', 'responseMessage'].includes(p.name))) // TODO: configure this properties
     }
 
-    function sortProperties(p1: PropertyMeta, p2: PropertyMeta): number {
-        if (selectedStep?.dslName.startsWith('Set') && p1.name === 'name') return -1;
-        return 0;
-    }
-
     function getPropertyFields(properties: PropertyMeta[]) {
         return (<>
-            {properties.sort(sortProperties).map((property: PropertyMeta) =>
+            {properties.map((property: PropertyMeta) =>
                 <DslPropertyField key={property.name}
                                   property={property}
                                   element={selectedStep}
@@ -143,7 +138,6 @@ export function DslProperties(props: Props) {
                                   onParameterChange={onParametersChange}
                                   onDataFormatChange={onDataFormatChange}
                                   onPropertyChange={onPropertyChange}
-                                  expressionEditor={props.expressionEditor}
                 />
             )}
         </>)
@@ -240,7 +234,6 @@ export function DslProperties(props: Props) {
                         dslName={selectedStep.dslName}
                         value={selectedStep}
                         onDataFormatChange={onDataFormatChange}
-                        expressionEditor={props.expressionEditor}
                         dark={dark}/>
                 }
                 {selectedStep && propertiesAdvanced.length > 0 &&

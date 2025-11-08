@@ -18,29 +18,13 @@
 import * as React from 'react';
 
 import './topology.css';
-import {DefaultEdge, EdgeTerminalType, NodeStatus, observer} from '@patternfly/react-topology';
-import {useTopologyStore} from "./TopologyStore";
-import {shallow} from "zustand/shallow";
+import {DefaultEdge, observer} from '@patternfly/react-topology';
 
 
 const CustomEdge: React.FC<any> = observer(({ element, ...rest }) => {
-
-    const [selectedIds] = useTopologyStore((s) => [s.selectedIds], shallow);
-
-    const data = element.getData();
-    const label = ((selectedIds.includes(element.getId())) && data?.label) ? data.label : '';
-
     return (
-        <DefaultEdge
-            element={element}
-            startTerminalType={EdgeTerminalType.none}
-            endTerminalType={EdgeTerminalType.directional}
-            endTerminalSize={10}
-            endTerminalStatus={data?.endTerminalStatus || NodeStatus.default}
-            tagStatus={data?.endTerminalStatus || NodeStatus.default}
-            tag={label}
-            {...rest}
-        />
+        <DefaultEdge element={element} {...rest}>
+        </DefaultEdge>
     )
 })
 export default CustomEdge;

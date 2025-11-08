@@ -95,10 +95,8 @@ export function RouteDesigner() {
 
     function getGraphButtons() {
         const routes = CamelUi.getRoutes(integration);
-        const routeConfigurations = CamelUi.getRouteConfigurations(integration);
-        const showNewRoute = routes.length === 0 && routeConfigurations?.length === 0;
-        const showNewRouteTemplate = !isKamelet() && routes.length === 0 && routeConfigurations?.length === 0;
-        const showNewRouteConfiguration = !isKamelet() && routes.length === 0;
+        const showNewRoute = (isKamelet() && routes.length === 0) || !isKamelet();
+        const showNewRouteConfiguration = !isKamelet();
         return (
             <div className="add-flow">
                 {showNewRoute && <Button
@@ -124,7 +122,7 @@ export function RouteDesigner() {
                 >
                     Create configuration
                 </Button>}
-                {showNewRouteTemplate && <Button
+                {<Button
                     variant="secondary"
                     icon={<PlusIcon/>}
                     onClick={evt => {
@@ -192,7 +190,7 @@ export function RouteDesigner() {
             <div className="dsl-page-columns">
                 {hasFlows && getGraph()}
             </div>
-            {showSelector && <DslSelector onDslSelect={onDslSelect}/>}
+            {showSelector && <DslSelector/>}
             {showDeleteConfirmation && <DeleteConfirmation/>}
             {showMoveConfirmation && <DslElementMoveModal/>}
         </div>

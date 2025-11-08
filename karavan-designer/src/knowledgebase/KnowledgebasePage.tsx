@@ -24,11 +24,12 @@ import {
     Switch,
     Tab,
     Tabs,
+    Text,
+    TextContent,
     TextInput,
     Toolbar,
     ToolbarContent
 } from "@patternfly/react-core";
-import {Text, TextContent} from "../designer/utils/PatternFlyCompat";
 import {MainToolbar} from "../designer/MainToolbar";
 import {KameletsTab} from "./kamelets/KameletsTab";
 import {EipTab} from "./eip/EipTab";

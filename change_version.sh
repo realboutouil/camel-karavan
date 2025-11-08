@@ -6,28 +6,18 @@ mvn versions:set -DnewVersion=$1 -f karavan-generator
 echo "Set Application pom.xml version: $1";
 mvn versions:set -DnewVersion=$1 -f karavan-app
 
-npm config set sign-git-tag false
-npm config set commit-hooks false
-npm config set workspaces-update false
-npm config set allow-same-version true
+yarn config set version-sign-git-tag false
+yarn config set version-commit-hooks false
+yarn config set version-git-message "v%s"
 
 echo "Set Core package.json extension version: $1";
-npm version --new-version $1 --prefix   karavan-core
+yarn version --new-version $1 --cwd karavan-core --no-git-tag-version
 
 echo "Set Designer package.json version: $1";
-npm version --new-version $1 --prefix  karavan-designer
+yarn version --new-version $1 --cwd karavan-designer --no-git-tag-version
 
 echo "Set Application package.json extension version: $1";
-npm version --new-version $1 --prefix  karavan-app/src/main/webui/
-
-echo "Set VSCode extension package.json version: $1";
-npm version --new-version $1 --prefix  karavan-vscode
-
-echo "Set README.md camel.jbang.version=$1";
-sed -i.bak 's/camel.jbang.version=[0-9].[0-9].[0-9]/camel.jbang.version='"$1"'/g' karavan-vscode/README.md 
-
-echo "Set VSCode extension package.json version: $1";
-npm version --new-version $1 --prefix  karavan-space
+yarn version --new-version $1 --cwd karavan-app/src/main/webui/ --no-git-tag-version
 
 echo "Set Github Workflow Devmode TAG version: $1";
 sed -i.bak 's/TAG:.*/TAG: '"$1"'/g' .github/workflows/docker-devmode.yml 
