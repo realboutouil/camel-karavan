@@ -107,6 +107,26 @@ dev-designer: ## Run karavan-designer in dev mode
 	@echo "$(GREEN)Starting karavan-designer in dev mode...$(NC)"
 	cd karavan-designer && $(YARN) dev
 
+dev-tools-up: ## Start development tools (IBM MQ, Redpanda/Kafka)
+	@echo "$(GREEN)Starting development tools...$(NC)"
+	@echo "$(YELLOW)Creating Docker network 'karavan' if not exists...$(NC)"
+	-docker network create karavan
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f tools-compose.yml up -d
+	@echo "$(GREEN)Development tools are ready!$(NC)"
+	@echo "$(BLUE)IBM MQ:         http://localhost:9443 (admin/passw0rd)$(NC)"
+	@echo "$(BLUE)Kafka Console:  http://localhost:8180$(NC)"
+	@echo "$(BLUE)Kafka Broker:   localhost:9092$(NC)"
+
+dev-tools-down: ## Stop development tools
+	@echo "$(GREEN)Stopping development tools...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f tools-compose.yml down
+
+dev-tools-logs: ## Show development tools logs
+	@echo "$(GREEN)Showing development tools logs...$(NC)"
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f tools-compose.yml logs -f
+
+dev-tools-restart: dev-tools-down dev-tools-up ## Restart development tools
+
 ##@ Testing
 
 test: test-core ## Run all tests
@@ -264,6 +284,8 @@ clean-generator: ## Clean karavan-generator build artifacts
 clean-all: clean ## Deep clean (includes Docker volumes)
 	@echo "$(RED)Performing deep clean...$(NC)"
 	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) down -v || true
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f docker-compose-local.yaml down -v || true
+	cd docs/install/karavan-docker && $(DOCKER_COMPOSE) -f tools-compose.yml down -v || true
 
 ##@ Quick Start
 

@@ -1,0 +1,164 @@
+name: karavan-tools
+
+services:
+
+  ibmmq:
+    image: ibm-messaging/mq
+    container_name: ibm-mq
+    build:
+      context: ./mq
+    ports:
+      - "1414:1414"
+      - "9443:9443"
+      - "9157:9157"
+    environment:
+      LICENSE: "accept"
+      MQ_QMGR_NAME: "QM1"
+    networks:
+      - karavan
+    restart: unless-stopped
+
+  redpanda:
+    # NOTE: Please use the latest version here!
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    command:
+      - redpanda
+      - start
+      - --smp
+      - '1'
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --node-id
+      - '0'
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    networks:
+      - karavan
+    restart: unless-stopped
+
+  kafka-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: kafka-console
+    ports:
+      - "8180:8080"
+    environment:
+      - KAFKA_BROKERS=redpanda:29092
+    depends_on:
+      - redpanda
+    networks:
+      - karavan
+    restart: always
+
+  forgejo:
+    container_name: forgejo
+    image: codeberg.org/forgejo/forgejo:9
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      - FORGEJO__server__OFFLINE_MODE=true
+      - FORGEJO__server__ROOT_URL=http://localhost:3000/
+      - FORGEJO__server__DOMAIN=localhost
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__admin__DISABLE_REGULAR_ORG_CREATION=false
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    labels:
+      - "org.apache.camel.karavan/type=internal"
+    networks:
+      - karavan
+
+  forgejo-init:
+    container_name: forgejo-init
+    image: codeberg.org/forgejo/forgejo:9
+    restart: "no"
+    user: "1000:1000"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO_WORK_DIR=/data/forgejo
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "Waiting for Forgejo to be ready..."
+        until curl -sf http://forgejo:3000/api/healthz > /dev/null 2>&1; do
+          sleep 2
+        done
+        echo "Forgejo is ready!"
+        
+        # Create admin user
+        if ! forgejo admin user list --admin | grep -q "karavan"; then
+          echo "Creating admin user 'karavan'..."
+          forgejo admin user create \
+            --admin \
+            --username karavan \
+            --password karavan \
+            --email karavan@localhost \
+            --must-change-password=false
+        else
+          echo "User 'karavan' already exists"
+        fi
+        
+        # Wait a bit for user to be fully created
+        sleep 3
+        
+        # Create repository via API
+        if ! curl -sf http://forgejo:3000/api/v1/repos/karavan/karavan > /dev/null 2>&1; then
+          echo "Creating repository 'karavan/karavan'..."
+          curl -X POST http://forgejo:3000/api/v1/user/repos \
+            -u karavan:karavan \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "karavan",
+              "description": "Karavan integration repository",
+              "private": false,
+              "auto_init": true,
+              "default_branch": "main"
+            }' || echo "Repository might already exist"
+        else
+          echo "Repository 'karavan/karavan' already exists"
+        fi
+        
+        echo "Forgejo setup completed!"
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    networks:
+      - karavan
+    volumes:
+      - ./data:/data
+
+  registry:
+    container_name: registry
+    image: registry:3
+    restart: always
+    ports:
+      - "5555:5000"
+    labels:
+      - "org.apache.camel.karavan/type=internal"
+    networks:
+      - karavan
+
+networks:
+  karavan:
+    name: karavan
+    external: true
