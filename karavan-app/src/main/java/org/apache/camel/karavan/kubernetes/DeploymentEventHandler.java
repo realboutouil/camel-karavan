@@ -77,7 +77,7 @@ public class DeploymentEventHandler implements ResourceEventHandler<Deployment> 
 
     public DeploymentStatus getDeploymentStatus(Deployment deployment) {
         try {
-            var dsImage = deployment.getSpec().getTemplate().getSpec().getContainers().get(0).getImage();
+            var dsImage = deployment.getSpec().getTemplate().getSpec().getContainers().getFirst().getImage();
             var imageName = dsImage.startsWith("image-registry.openshift-image-registry.svc")
                     ? dsImage.replace("image-registry.openshift-image-registry.svc:5000/", "")
                     : dsImage;

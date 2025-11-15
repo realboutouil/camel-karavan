@@ -193,7 +193,7 @@ public final class CamelDefinitionApiGenerator extends AbstractGenerator {
             List<String> list = obj.getJsonArray("required").getList();
             list = list.stream().filter(o -> !o.equals("steps")).collect(toList());
             return "        if (element && typeof element === 'string') {\n" +
-                    "            element = {" + list.get(0) + ": element};\n" +
+                    "            element = {" + list.getFirst() + ": element};\n" +
                     "        }";
         } else {
             return "";

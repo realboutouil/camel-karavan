@@ -329,7 +329,7 @@ public class GitService {
         if (repos.isEmpty()) {
             throw new IllegalStateException("Project not found in repository: " + projectId);
         }
-        return repos.get(0);
+        return repos.getFirst();
     }
 
     private void writeProjectToFolder(String folder, Project project, List<ProjectFile> files) throws IOException {

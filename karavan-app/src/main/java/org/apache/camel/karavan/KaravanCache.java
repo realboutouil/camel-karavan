@@ -85,7 +85,7 @@ public class KaravanCache {
 
     public ProjectFile getProjectFile(String projectId, String filename) {
         List<ProjectFile> list = getCopyProjectFiles().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId) && Objects.equals(pf.getName(), filename)).toList();
-        return !list.isEmpty() ? list.get(0) : null;
+        return !list.isEmpty() ? list.getFirst() : null;
     }
 
     private List<ProjectFile> getCopyProjectFiles() {
@@ -159,7 +159,7 @@ public class KaravanCache {
 
     public ProjectFile getProjectFileCommited(String projectId, String filename) {
         List<ProjectFile> list = getCopyProjectFilesCommited().stream().filter(pf -> Objects.equals(pf.getProjectId(), projectId) && Objects.equals(pf.getName(), filename)).toList();
-        return !list.isEmpty() ? list.get(0) : null;
+        return !list.isEmpty() ? list.getFirst() : null;
     }
 
     public void deleteProject(String projectId, boolean startup) {

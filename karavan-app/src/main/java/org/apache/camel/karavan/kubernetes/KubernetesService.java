@@ -169,14 +169,14 @@ public class KubernetesService {
 
         Pod pod = Serialization.unmarshal(configFragment, Pod.class);
 
-        pod.getSpec().getContainers().get(0).getEnv().add(new EnvVarBuilder().withName(RUN_IN_BUILD_MODE).withValue("true").build());
+        pod.getSpec().getContainers().getFirst().getEnv().add(new EnvVarBuilder().withName(RUN_IN_BUILD_MODE).withValue("true").build());
 
         Container container = new ContainerBuilder()
                 .withName(name)
                 .withImage(properties.devmode().image())
                 .withPorts(port)
                 .withImagePullPolicy(properties.devmode().imagePullPolicy())
-                .withEnv(pod.getSpec().getContainers().get(0).getEnv())
+                .withEnv(pod.getSpec().getContainers().getFirst().getEnv())
                 .withCommand("/bin/sh", "-c", "/karavan/builder/build.sh")
                 .withVolumeMounts(volumeMounts)
                 .build();
@@ -390,7 +390,7 @@ public class KubernetesService {
         }
         List<VolumeMount> volumeMounts = new ArrayList<>();
         try {
-            volumeMounts = podSpec.getContainers().get(0).getVolumeMounts();
+            volumeMounts = podSpec.getContainers().getFirst().getVolumeMounts();
         } catch (Exception ignored) {
         }
 
@@ -411,7 +411,7 @@ public class KubernetesService {
 
         List<EnvVar> environmentVariables = new ArrayList<>();
         try {
-            environmentVariables = new ArrayList<>(podSpec.getContainers().get(0).getEnv());
+            environmentVariables = new ArrayList<>(podSpec.getContainers().getFirst().getEnv());
         } catch (Exception ignored) {
         }
 

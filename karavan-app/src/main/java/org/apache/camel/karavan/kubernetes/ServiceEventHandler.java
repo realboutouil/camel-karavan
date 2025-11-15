@@ -80,8 +80,8 @@ public class ServiceEventHandler implements ResourceEventHandler<Service> {
                     service.getMetadata().getNamespace(),
                     kubernetesStatusService.getEnvironment(),
                     kubernetesStatusService.getCluster(),
-                    service.getSpec().getPorts().get(0).getPort(),
-                    service.getSpec().getPorts().get(0).getTargetPort().getIntVal(),
+                    service.getSpec().getPorts().getFirst().getPort(),
+                    service.getSpec().getPorts().getFirst().getTargetPort().getIntVal(),
                     service.getSpec().getClusterIP(),
                     service.getSpec().getType()
             );

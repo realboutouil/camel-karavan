@@ -141,13 +141,13 @@ public class DockerService {
     public Container getContainer(String id) {
         try (ListContainersCmd cmd = getDockerClient().listContainersCmd().withShowAll(true).withIdFilter(List.of(id))) {
             List<Container> containers = cmd.exec();
-            return containers.isEmpty() ? null : containers.get(0);
+            return containers.isEmpty() ? null : containers.getFirst();
         }
     }
 
     public Container getContainerByName(String name) {
         List<Container> containers = findContainer(name);
-        return !containers.isEmpty() ? containers.get(0) : null;
+        return !containers.isEmpty() ? containers.getFirst() : null;
     }
 
     public List<Container> getAllContainers() {
@@ -177,8 +177,8 @@ public class DockerService {
                     compose.getCpus(), compose.getCpu_percent(), compose.getMem_limit(), compose.getMem_reservation(), compose.getCommand());
 
         } else {
-            log.info("Compose Service already exists: " + containers.get(0).getId());
-            return containers.get(0);
+            log.info("Compose Service already exists: " + containers.getFirst().getId());
+            return containers.getFirst();
         }
     }
 
@@ -243,19 +243,19 @@ public class DockerService {
                 log.info("Container created: " + response.getId());
 
                 try (ListContainersCmd cmd = getDockerClient().listContainersCmd().withShowAll(true).withIdFilter(Collections.singleton(response.getId()))) {
-                    return cmd.exec().get(0);
+                    return cmd.exec().getFirst();
                 }
             }
         } else {
-            log.info("Container already exists: " + containers.get(0).getId());
-            return containers.get(0);
+            log.info("Container already exists: " + containers.getFirst().getId());
+            return containers.getFirst();
         }
     }
 
     public void runContainer(String name) {
         List<Container> containers = findContainer(name);
         if (containers.size() == 1) {
-            runContainer(containers.get(0));
+            runContainer(containers.getFirst());
         }
     }
 
@@ -325,7 +325,7 @@ public class DockerService {
     public void pauseContainer(String name) {
         List<Container> containers = findContainer(name);
         if (containers.size() == 1) {
-            Container container = containers.get(0);
+            Container container = containers.getFirst();
             if (container.getState().equals("running")) {
                 try (PauseContainerCmd cmd = getDockerClient().pauseContainerCmd(container.getId())) {
                     cmd.exec();
@@ -337,7 +337,7 @@ public class DockerService {
     public void stopContainer(String name) {
         List<Container> containers = findContainer(name);
         if (containers.size() == 1) {
-            Container container = containers.get(0);
+            Container container = containers.getFirst();
             if (container.getState().equals("running") || container.getState().equals("paused")) {
                 try (StopContainerCmd cmd = getDockerClient().stopContainerCmd(container.getId()).withTimeout(1)) {
                     cmd.exec();
@@ -349,7 +349,7 @@ public class DockerService {
     public void deleteContainer(String name) {
         List<Container> containers = findContainer(name);
         if (containers.size() == 1) {
-            Container container = containers.get(0);
+            Container container = containers.getFirst();
             try (RemoveContainerCmd cmd = getDockerClient().removeContainerCmd(container.getId()).withForce(true)) {
                 cmd.exec();
             }
@@ -359,7 +359,7 @@ public class DockerService {
     public void execCommandInContainer(String containerName, String cmd) throws InterruptedException {
         List<Container> containers = findContainer(containerName);
         if (containers.size() == 1) {
-            Container container = containers.get(0);
+            Container container = containers.getFirst();
             if (container.getState().equals("running")) {
                 try (ExecCreateCmd execCreateCmd = getDockerClient().execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd(cmd.split("\\s+"))) {
                     var execCreateCmdResponse = execCreateCmd.exec();

@@ -92,7 +92,7 @@ public class CamelStatusListener {
         } else if (ConfigService.inDocker()) {
             return "http://" + podContainerStatus.getContainerName() + ":8080";
         } else if (podContainerStatus.getPorts() != null && !podContainerStatus.getPorts().isEmpty()) {
-            Integer port = podContainerStatus.getPorts().get(0).getPublicPort();
+            Integer port = podContainerStatus.getPorts().getFirst().getPublicPort();
             if (port != null) {
                 return "http://localhost:" + port;
             }

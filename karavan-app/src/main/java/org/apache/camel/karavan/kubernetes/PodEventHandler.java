@@ -140,7 +140,7 @@ public class PodEventHandler implements ResourceEventHandler<Pod> {
                     requestCpu + " / " + limitCpu,
                     creationTimestamp);
             status.setLabels(pod.getMetadata().getLabels());
-            status.setImage(pod.getSpec().getContainers().get(0).getImage());
+            status.setImage(pod.getSpec().getContainers().getFirst().getImage());
             status.setCommit(commit);
             status.setContainerId(pod.getMetadata().getName());
             status.setPhase(pod.getStatus().getPhase());
