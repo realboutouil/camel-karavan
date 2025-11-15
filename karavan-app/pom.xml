@@ -33,7 +33,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.29.0</quarkus.platform.version>
+        <quarkus.platform.version>3.29.3</quarkus.platform.version>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
         <jgit.version>3.6.1</jgit.version>
         <infinispan-embedded.version>1.2.1</infinispan-embedded.version>
